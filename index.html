@@ -776,6 +776,17 @@
       font-weight: 600;
       color: #2C2C2A;
     }
+    .markdown img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 24px auto;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 14px rgba(0,0,0,0.06);
+    }
+    .markdown p:has(img) {
+      text-align: center;
+    }
 
     /* ===== Tags Page ===== */
     .tags-grid {
@@ -4870,7 +4881,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const param = parts[1] ? decodeURIComponent(parts[1]) : null;
 
       document.querySelectorAll(".nav a").forEach(a => a.classList.remove("active"));
-      const navMap = { home: "nav-home", tags: "nav-tags", tag: "nav-tags", series: "nav-series", guestbook: "nav-guestbook", about: "nav-about", post: "nav-home" };
+      const navMap = { home: "nav-home", tags: "nav-tags", tag: "nav-tags", series: "nav-series", "series-detail": "nav-series", guestbook: "nav-guestbook", about: "nav-about", post: "nav-home" };
       const navId = navMap[route] || "nav-home";
       const navEl = document.getElementById(navId);
       if (navEl) navEl.classList.add("active");
@@ -4898,6 +4909,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         case "tags": renderTags(); break;
         case "tag": renderTagPosts(param); break;
         case "series": renderSeries(); break;
+        case "series-detail": renderSeriesDetail(parseInt(param)); break;
         case "guestbook": renderGuestbook(); break;
         case "tag-manage": renderTagManage(); break;
         case "about": renderAbout(); break;
@@ -5200,60 +5212,52 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     // ===== 专题页面 =====
+    // 专题定义（全局复用）
+    const SERIES_DEFS = [
+      {
+        name: "笔触校园、文彰华农",
+        desc: "华农校园采风系列",
+        match: p => p.title.includes("笔触") || (p.category && p.category.includes("校园纪游")) || p.tags.some(t => t === "校园纪游"),
+      },
+      {
+        name: "读书笔记",
+        desc: "读书心得、学习笔记与总结",
+        match: p => p.title.includes("读书") || p.title.includes("阅读") || p.title.includes("笔记") || p.title.includes("书评") || p.title.includes("总结"),
+      },
+      {
+        name: "小说集",
+        desc: "小说创作合集",
+        match: p => (p.category && p.category === "小说") || p.tags.some(t => t === "小说"),
+      },
+      {
+        name: "诗歌集",
+        desc: "诗歌创作合集",
+        match: p => (p.category && p.category === "诗歌") || p.tags.some(t => t === "诗歌"),
+      },
+      {
+        name: "剧本集",
+        desc: "剧本创作合集",
+        match: p => (p.category && (p.category.includes("剧本") || p.category.includes("戏剧"))) || p.tags.some(t => t === "剧本" || t === "戏剧") || p.title.includes("剧本") || p.title.includes("戏剧"),
+      },
+    ];
+
     function renderSeries() {
       const app = document.getElementById("app");
       const allPosts = getAllPosts();
 
-      // 定义专题：{ name, desc, match }
-      const seriesDefs = [
-        {
-          name: "笔触校园、文彰华农",
-          desc: "华农校园采风系列",
-          match: p => p.title.includes("笔触") || (p.category && p.category.includes("校园纪游")) || p.tags.some(t => t === "校园纪游"),
-        },
-        {
-          name: "读书笔记",
-          desc: "读书心得、学习笔记与总结",
-          match: p => p.title.includes("读书") || p.title.includes("阅读") || p.title.includes("笔记") || p.title.includes("书评") || p.title.includes("总结"),
-        },
-        {
-          name: "小说集",
-          desc: "小说创作合集",
-          match: p => (p.category && p.category === "小说") || p.tags.some(t => t === "小说"),
-        },
-        {
-          name: "诗歌集",
-          desc: "诗歌创作合集",
-          match: p => (p.category && p.category === "诗歌") || p.tags.some(t => t === "诗歌"),
-        },
-        {
-          name: "剧本集",
-          desc: "剧本创作合集",
-          match: p => (p.category && (p.category.includes("剧本") || p.category.includes("戏剧"))) || p.tags.some(t => t === "剧本" || t === "戏剧") || p.title.includes("剧本") || p.title.includes("戏剧"),
-        },
-      ];
-
-      const seriesCards = seriesDefs.map((def, idx) => {
+      const seriesCards = SERIES_DEFS.map((def, idx) => {
         const posts = allPosts.filter(def.match);
         if (posts.length === 0) return "";
-        const id = "series-list-" + idx;
         return `
-          <div class="series-card" style="margin-bottom:24px;padding:24px;border:0.5px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:var(--transition);position:relative;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-            <h2 style="font-family:var(--font-serif);font-size:20px;font-weight:600;color:var(--fg);margin-bottom:8px;">${def.name}</h2>
-            <p style="color:var(--fg-muted);font-size:14px;margin-bottom:12px;">${def.desc}，共 ${posts.length} 篇</p>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
-              ${posts.slice(0,5).map(p => `<span style="font-size:13px;color:var(--fg-muted);">${p.date}</span>`).join('<span style="color:var(--border);"> · </span>')}
-              ${posts.length > 5 ? '<span style="font-size:13px;color:var(--fg-muted);">...</span>' : ''}
+          <div class="post-card reveal" style="cursor:pointer;" onclick="navigate('series-detail','${idx}')">
+            <div class="post-meta">
+              <time>${posts[0].date} ~ ${posts[posts.length-1].date}</time>
+              <span>·</span>
+              <span>${posts.length} 篇</span>
             </div>
-            <div id="${id}" style="display:none;margin-top:16px;">
-              ${posts.map(p => `
-                <div class="post-card" onclick="navigate('post/${p.slug}')" style="padding:16px 0;border-bottom:0.5px solid var(--border);">
-                  <h3 style="font-family:var(--font-serif);font-size:16px;font-weight:500;color:var(--fg);margin-bottom:6px;">${p.title}</h3>
-                  <div style="font-size:13px;color:var(--fg-muted);">${p.date}</div>
-                </div>
-              `).join('')}
-            </div>
-            <button onclick="var el=document.getElementById('${id}');el.style.display=el.style.display==='none'?'block':'none';this.textContent=el.style.display==='none'?'展开全部文章':'收起'" style="font-size:13px;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 0;">展开全部文章</button>
+            <h3>${def.name}</h3>
+            <p class="excerpt">${def.desc}</p>
+            <div class="post-tags">${posts.slice(0,3).map(p => `<span class="post-tag">${p.title.length > 12 ? p.title.slice(0,12) + '…' : p.title}</span>`).join("")}${posts.length > 3 ? `<span class="post-tag">+${posts.length-3}</span>` : ''}</div>
           </div>
         `;
       }).filter(Boolean).join("");
@@ -5265,6 +5269,37 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         </header>
         ${seriesCards || '<div class="loading">暂无专题文章</div>'}
       `;
+      setTimeout(observeReveal, 30);
+    }
+
+    function renderSeriesDetail(idx) {
+      const app = document.getElementById("app");
+      const def = SERIES_DEFS[idx];
+      if (!def) { app.innerHTML = '<div class="loading">专题不存在</div>'; return; }
+
+      const posts = getAllPosts().filter(def.match).sort((a, b) => a.date < b.date ? 1 : -1);
+
+      app.innerHTML = `
+        <div class="post-detail page-enter">
+          <span class="back-link" onclick="goBack()">← 返回专题</span>
+          <h1 style="margin-bottom:8px;">${def.name}</h1>
+          <div class="post-meta" style="margin-bottom:40px;">
+            <span style="color:var(--fg-muted);font-size:14px;">${def.desc}，共 ${posts.length} 篇</span>
+          </div>
+          ${posts.map((post, i) => `
+            <div class="post-card reveal" style="transition-delay:${Math.min(i * 0.04, 0.3)}s;cursor:pointer;" onclick="navigate('post','${post.slug}')">
+              <div class="post-meta">
+                <time>${formatDate(post.date)}</time>
+                <span>·</span>
+                ${post.tags.slice(0,2).map(t => `<span>#${t}</span>`).join(' ')}
+              </div>
+              <h3>${post.title}</h3>
+              <p class="excerpt">${post.excerpt}</p>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      setTimeout(observeReveal, 30);
     }
 
     // ===== 留言板 =====
