@@ -50,6 +50,17 @@
       -moz-osx-font-smoothing: grayscale;
       overflow-x: hidden;
     }
+    /* 纸张纹理 */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.2;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
 
     a { color: var(--accent); text-decoration: none; }
     a:hover { color: var(--accent-hover); }
@@ -537,10 +548,16 @@
       background: var(--accent);
       transform: scaleY(0);
       transform-origin: top;
-      transition: transform 0.3s ease;
+      transition: transform 0.4s ease;
     }
     .post-card:hover::before { transform: scaleY(1); }
-    .post-card:hover { padding-left: 8px; }
+    .post-card:hover {
+      padding-left: 12px;
+      background: var(--accent-soft);
+      margin-left: -12px;
+      padding-right: 12px;
+      border-radius: var(--radius);
+    }
     .post-card:last-child { border-bottom: none; }
 
     .post-meta {
@@ -1167,8 +1184,9 @@
           <button class="admin-btn" id="settings-btn" onclick="openSettings()" title="设置" style="display:none;">设置</button>
           <nav class="nav">
             <a id="nav-home" onclick="navigate('home')">首页</a>
-            <a id="nav-categories" onclick="navigate('categories')">文体</a>
             <a id="nav-tags" onclick="navigate('tags')">标签</a>
+            <a id="nav-series" onclick="navigate('series')">专题</a>
+            <a id="nav-guestbook" onclick="navigate('guestbook')">留言</a>
             <a id="nav-about" onclick="navigate('about')">关于</a>
           </nav>
         </div>
@@ -4289,6 +4307,52 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     }
 
+    // ===== 标签迁移 - 批量合并标签 =====
+    function migrateTags() {
+      const migrations = [
+        { from: ['校园'], to: '校园纪游' },
+        { from: ['影评', '书评影评', '学习笔记', '读书', '总结', '总结规划', '哲学'], to: '评论' },
+        { from: ['讲座', '讲座报道', '调研', '调研报告'], to: '报告' },
+      ];
+
+      const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      let changed = false;
+
+      function runMigration(post) {
+        let c = false;
+        migrations.forEach(({from, to}) => {
+          from.forEach(f => {
+            const before = post.tags.length;
+            post.tags = post.tags.filter(t => t !== f);
+            if (post.tags.length !== before) {
+              post.tags.push(to);
+              c = true;
+            }
+            if (post.category === f) {
+              post.category = to;
+              c = true;
+            }
+          });
+        });
+        post.tags = [...new Set(post.tags)];
+        return c;
+      }
+
+      // 迁移默认文章
+      POSTS.forEach(p => runMigration(p));
+      // 迁移用户文章
+      userPosts.forEach(p => { if (runMigration(p)) changed = true; });
+
+      if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(userPosts));
+      console.log('标签迁移完成');
+    }
+
+    // 首次加载时执行迁移
+    if (!localStorage.getItem('tags-migrated-20260713')) {
+      migrateTags();
+      localStorage.setItem('tags-migrated-20260713', '1');
+    }
+
     function getBio() {
       return localStorage.getItem(BIO_KEY) || `这里收录了我大一一学年的全部习作，共七十篇。
 
@@ -4702,12 +4766,21 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     function getAllTags() {
       const tagMap = new Map();
-      getAllPosts().forEach(post => post.tags.forEach(tag => tagMap.set(tag, (tagMap.get(tag) || 0) + 1)));
+      getAllPosts().forEach(post => {
+        // 合并文体到标签
+        if (post.category) tagMap.set(post.category, (tagMap.get(post.category) || 0) + 1);
+        post.tags.forEach(tag => tagMap.set(tag, (tagMap.get(tag) || 0) + 1));
+      });
       return Array.from(tagMap.entries()).map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count);
     }
 
-    function getPostsByCategory(category) { return getAllPosts().filter(p => p.category === category); }
-    function getPostsByTag(tag) { return getAllPosts().filter(p => p.tags.some(t => t.toLowerCase() === tag.toLowerCase())); }
+    function getPostsByTag(tag) {
+      const tl = tag.toLowerCase();
+      return getAllPosts().filter(p =>
+        p.tags.some(t => t.toLowerCase() === tl) ||
+        (p.category && p.category.toLowerCase() === tl)
+      );
+    }
 
     // ===== 路由 =====
     let savedScrollY = 0; // 保存主页滚动位置
@@ -4730,7 +4803,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const param = parts[1] ? decodeURIComponent(parts[1]) : null;
 
       document.querySelectorAll(".nav a").forEach(a => a.classList.remove("active"));
-      const navMap = { home: "nav-home", categories: "nav-categories", category: "nav-categories", tags: "nav-tags", tag: "nav-tags", about: "nav-about", post: "nav-home" };
+      const navMap = { home: "nav-home", tags: "nav-tags", tag: "nav-tags", series: "nav-series", guestbook: "nav-guestbook", about: "nav-about", post: "nav-home" };
       const navId = navMap[route] || "nav-home";
       const navEl = document.getElementById(navId);
       if (navEl) navEl.classList.add("active");
@@ -4752,10 +4825,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       switch (route) {
         case "home": renderHome(); break;
         case "post": renderPost(param); break;
-        case "categories": renderCategories(); break;
-        case "category": renderCategoryPosts(param); break;
         case "tags": renderTags(); break;
         case "tag": renderTagPosts(param); break;
+        case "series": renderSeries(); break;
+        case "guestbook": renderGuestbook(); break;
+        case "tag-manage": renderTagManage(); break;
         case "about": renderAbout(); break;
         default: renderHome();
       }
@@ -4768,8 +4842,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function renderHome() {
       const app = document.getElementById("app");
       const posts = getFilteredPosts();
-      const categories = getAvailableCategories(currentFilter.tag);
-      const tags = getAvailableTags(currentFilter.category);
+      const tags = getAllTags();
 
       let filterHTML = '<div class="filter-panel-inner">';
 
@@ -4780,28 +4853,18 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       filterHTML += `<div class="sort-btn ${sortMode === "asc" ? "active" : ""}" onclick="setSort('asc')">按时间正序</div>`;
       filterHTML += '</div>';
 
-      // 文体筛选
-      filterHTML += '<div class="filter-section">';
-      filterHTML += '<div class="filter-label">文体</div>';
-      filterHTML += '<div class="filter-chips">';
-      filterHTML += `<div class="filter-chip ${!currentFilter.category ? 'active' : ''}" onclick="setFilter('category',null)">全部</div>`;
-      categories.forEach(({ category, count }) => {
-        const active = currentFilter.category === category ? "active" : "";
-        filterHTML += `<div class="filter-chip ${active}" onclick="setFilter('category','${category}')">${category} <span class="chip-count">${count}</span></div>`;
-      });
-      filterHTML += '</div></div>';
-
-      // 标签筛选
+      // 标签筛选（包含文体）
       if (tags.length > 0) {
         filterHTML += '<div class="filter-section">';
         filterHTML += '<div class="filter-label">标签';
-        if (currentFilter.tag) filterHTML += ` <span class="filter-clear" onclick="setFilter('tag',null)">清除</span>`;
+        if (currentFilter.tag || currentFilter.category) filterHTML += ` <span class="filter-clear" onclick="setFilter('tag',null);setFilter('category',null)">清除</span>`;
         filterHTML += '</div>';
         filterHTML += '<div class="filter-chips">';
-        if (currentFilter.tag) {
-          filterHTML += `<div class="filter-chip active" onclick="setFilter('tag',null)">#${currentFilter.tag} ✕</div>`;
+        const activeFilter = currentFilter.tag || currentFilter.category;
+        if (activeFilter) {
+          filterHTML += `<div class="filter-chip active" onclick="setFilter('tag',null);setFilter('category',null)">#${activeFilter} ✕</div>`;
           tags.forEach(({ tag, count }) => {
-            if (tag !== currentFilter.tag) filterHTML += `<div class="filter-chip" onclick="setFilter('tag','${tag}')">#${tag} <span class="chip-count">${count}</span></div>`;
+            if (tag !== activeFilter) filterHTML += `<div class="filter-chip" onclick="setFilter('tag','${tag}')">#${tag} <span class="chip-count">${count}</span></div>`;
           });
         } else {
           tags.forEach(({ tag, count }) => {
@@ -5018,10 +5081,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function renderTags() {
       const app = document.getElementById("app");
       const tags = getAllTags();
+      const admin = isAdmin;
       app.innerHTML = `
-        <header style="margin-bottom:40px;">
-          <h1 style="font-family:var(--font-serif);font-size:28px;font-weight:600;color:var(--fg);margin-bottom:8px;">标签分类</h1>
-          <p style="color:var(--fg-muted);font-size:14px;">共 ${tags.length} 个标签，点击标签查看相关文章</p>
+        <header style="margin-bottom:40px;display:flex;justify-content:space-between;align-items:flex-end;">
+          <div>
+            <h1 style="font-family:var(--font-serif);font-size:28px;font-weight:600;color:var(--fg);margin-bottom:8px;">标签分类</h1>
+            <p style="color:var(--fg-muted);font-size:14px;">共 ${tags.length} 个标签，点击标签查看相关文章</p>
+          </div>
+          ${admin ? '<button onclick="navigate(\'tag-manage\')" style="font-size:13px;color:var(--accent);background:none;border:0.5px solid var(--border);padding:6px 14px;border-radius:var(--radius);cursor:pointer;transition:var(--transition);">管理标签</button>' : ''}
         </header>
         <div class="tags-grid">
           ${tags.map(({ tag, count }) => `
@@ -5059,6 +5126,213 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
         `).join("") : '<div class="loading">该标签下暂无文章</div>'}
       `;
+    }
+
+    // ===== 专题页面 =====
+    function renderSeries() {
+      const app = document.getElementById("app");
+      const allPosts = getAllPosts();
+
+      // 定义专题：{ name, desc, match }
+      const seriesDefs = [
+        {
+          name: "笔触校园、文彰华农",
+          desc: "华农校园采风系列",
+          match: p => p.title.includes("笔触") || (p.category && p.category.includes("校园纪游")) || p.tags.some(t => t === "校园纪游"),
+        },
+        {
+          name: "读书笔记",
+          desc: "读书心得、学习笔记与总结",
+          match: p => p.title.includes("读书") || p.title.includes("阅读") || p.title.includes("笔记") || p.title.includes("书评") || p.title.includes("总结"),
+        },
+        {
+          name: "小说集",
+          desc: "小说创作合集",
+          match: p => (p.category && p.category === "小说") || p.tags.some(t => t === "小说"),
+        },
+        {
+          name: "诗歌集",
+          desc: "诗歌创作合集",
+          match: p => (p.category && p.category === "诗歌") || p.tags.some(t => t === "诗歌"),
+        },
+        {
+          name: "剧本集",
+          desc: "剧本创作合集",
+          match: p => (p.category && (p.category.includes("剧本") || p.category.includes("戏剧"))) || p.tags.some(t => t === "剧本" || t === "戏剧") || p.title.includes("剧本") || p.title.includes("戏剧"),
+        },
+      ];
+
+      const seriesCards = seriesDefs.map((def, idx) => {
+        const posts = allPosts.filter(def.match);
+        if (posts.length === 0) return "";
+        const id = "series-list-" + idx;
+        return `
+          <div class="series-card" style="margin-bottom:24px;padding:24px;border:0.5px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:var(--transition);position:relative;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            <h2 style="font-family:var(--font-serif);font-size:20px;font-weight:600;color:var(--fg);margin-bottom:8px;">${def.name}</h2>
+            <p style="color:var(--fg-muted);font-size:14px;margin-bottom:12px;">${def.desc}，共 ${posts.length} 篇</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+              ${posts.slice(0,5).map(p => `<span style="font-size:13px;color:var(--fg-muted);">${p.date}</span>`).join('<span style="color:var(--border);"> · </span>')}
+              ${posts.length > 5 ? '<span style="font-size:13px;color:var(--fg-muted);">...</span>' : ''}
+            </div>
+            <div id="${id}" style="display:none;margin-top:16px;">
+              ${posts.map(p => `
+                <div class="post-card" onclick="navigate('post/${p.slug}')" style="padding:16px 0;border-bottom:0.5px solid var(--border);">
+                  <h3 style="font-family:var(--font-serif);font-size:16px;font-weight:500;color:var(--fg);margin-bottom:6px;">${p.title}</h3>
+                  <div style="font-size:13px;color:var(--fg-muted);">${p.date}</div>
+                </div>
+              `).join('')}
+            </div>
+            <button onclick="var el=document.getElementById('${id}');el.style.display=el.style.display==='none'?'block':'none';this.textContent=el.style.display==='none'?'展开全部文章':'收起'" style="font-size:13px;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 0;">展开全部文章</button>
+          </div>
+        `;
+      }).filter(Boolean).join("");
+
+      app.innerHTML = `
+        <header style="margin-bottom:40px;">
+          <h1 style="font-family:var(--font-serif);font-size:28px;font-weight:600;color:var(--fg);margin-bottom:8px;">专题</h1>
+          <p style="color:var(--fg-muted);font-size:14px;">系列文章合集</p>
+        </header>
+        ${seriesCards || '<div class="loading">暂无专题文章</div>'}
+      `;
+    }
+
+    // ===== 留言板 =====
+    function getGuestbook() {
+      try { return JSON.parse(localStorage.getItem("guestbook") || "[]"); } catch { return []; }
+    }
+    function addGuestbookEntry(name, text) {
+      const entries = getGuestbook();
+      entries.unshift({ name: name || "匿名访客", text, time: new Date().toLocaleString("zh-CN") });
+      localStorage.setItem("guestbook", JSON.stringify(entries));
+    }
+    function deleteGuestbookEntry(index) {
+      if (!isAdmin) { alert("需要管理员权限"); return; }
+      const entries = getGuestbook();
+      entries.splice(index, 1);
+      localStorage.setItem("guestbook", JSON.stringify(entries));
+      renderGuestbook();
+    }
+
+    function renderGuestbook() {
+      const entries = getGuestbook();
+      const app = document.getElementById("app");
+      const admin = isAdmin;
+      app.innerHTML = `
+        <header style="margin-bottom:40px;">
+          <h1 style="font-family:var(--font-serif);font-size:28px;font-weight:600;color:var(--fg);margin-bottom:8px;">留言板</h1>
+          <p style="color:var(--fg-muted);font-size:14px;">留下你想说的话</p>
+        </header>
+
+        <div style="margin-bottom:40px;padding:24px;border:0.5px solid var(--border);border-radius:var(--radius);">
+          <input type="text" id="gb-name" placeholder="你的名字（选填）" style="width:100%;padding:10px 14px;font-family:var(--font-sans);font-size:14px;border:0.5px solid var(--border);border-radius:var(--radius);margin-bottom:12px;background:var(--bg);color:var(--fg);">
+          <textarea id="gb-text" placeholder="写下你的留言..." rows="4" style="width:100%;padding:10px 14px;font-family:var(--font-sans);font-size:14px;border:0.5px solid var(--border);border-radius:var(--radius);resize:vertical;background:var(--bg);color:var(--fg);"></textarea>
+          <button onclick="submitGuestbook()" style="margin-top:12px;padding:8px 24px;font-family:var(--font-sans);font-size:14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;transition:var(--transition);" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">发布留言</button>
+        </div>
+
+        <div id="gb-list">
+          ${entries.length === 0 ? '<div class="loading">还没有留言，来写第一条吧</div>' :
+            entries.map((e, i) => `
+              <div style="padding:20px 0;border-bottom:0.5px solid var(--border);position:relative;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+                  <span style="font-family:var(--font-serif);font-size:15px;font-weight:600;color:var(--fg);">${escapeHtml(e.name)}</span>
+                  <span style="font-size:12px;color:var(--fg-muted);">${e.time}</span>
+                </div>
+                <p style="font-size:14px;color:var(--fg-muted);line-height:1.8;white-space:pre-wrap;">${escapeHtml(e.text)}</p>
+                ${admin ? `<button onclick="deleteGuestbookEntry(${i})" style="position:absolute;top:20px;right:0;font-size:12px;color:var(--fg-muted);background:none;border:none;cursor:pointer;">删除</button>` : ''}
+              </div>
+            `).join('')
+          }
+        </div>
+      `;
+    }
+
+    function submitGuestbook() {
+      const name = document.getElementById("gb-name").value.trim();
+      const text = document.getElementById("gb-text").value.trim();
+      if (!text) { alert("留言内容不能为空"); return; }
+      addGuestbookEntry(name, text);
+      renderGuestbook();
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ===== 标签管理（管理员） =====
+    function renderTagManage() {
+      const app = document.getElementById("app");
+      const tags = getAllTags();
+      const admin = isAdmin;
+
+      app.innerHTML = `
+        <header style="margin-bottom:32px;">
+          <h1 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:var(--fg);">标签管理</h1>
+          <p style="color:var(--fg-muted);font-size:13px;margin-top:4px;">重命名或删除标签（同时影响所有文章）</p>
+        </header>
+
+        <div style="margin-bottom:24px;padding:20px;border:0.5px solid var(--border);border-radius:var(--radius);">
+          <h3 style="font-size:15px;font-weight:600;color:var(--fg);margin-bottom:12px;">添加新标签</h3>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="new-tag-name" placeholder="标签名" style="flex:1;padding:8px 12px;font-size:14px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--fg);">
+            <button onclick="addNewTag()" style="padding:8px 20px;font-size:14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;">添加</button>
+          </div>
+        </div>
+
+        <div>
+          ${tags.map(({ tag, count }) => `
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:0.5px solid var(--border);">
+              <span style="flex:1;font-size:15px;color:var(--fg);">#${tag}</span>
+              <span style="font-size:13px;color:var(--fg-muted);">${count} 篇</span>
+              <button onclick="renameTagPrompt('${tag}')" style="font-size:13px;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 8px;">重命名</button>
+              <button onclick="deleteTagConfirm('${tag}')" style="font-size:13px;color:#c0392b;background:none;border:none;cursor:pointer;padding:4px 8px;">删除</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renameTagPrompt(oldTag) {
+      const newName = prompt("将标签重命名为：", oldTag);
+      if (!newName || newName === oldTag) return;
+      getAllPosts().forEach(post => {
+        let changed = false;
+        // 重命名 tags 数组中的标签
+        post.tags = post.tags.map(t => { if (t === oldTag) { changed = true; return newName; } return t; });
+        // 重命名 category
+        if (post.category === oldTag) { post.category = newName; changed = true; }
+        if (changed) savePost(post);
+      });
+      alert("标签已重命名");
+      renderTagManage();
+    }
+
+    function deleteTagConfirm(tag) {
+      if (!confirm(`确定删除标签 "${tag}" 吗？\n这会从所有文章中移除该标签。`)) return;
+      getAllPosts().forEach(post => {
+        let changed = false;
+        const before = post.tags.length;
+        post.tags = post.tags.filter(t => t !== tag);
+        if (post.tags.length !== before) changed = true;
+        if (post.category === tag) { post.category = null; changed = true; }
+        if (changed) savePost(post);
+      });
+      alert("标签已删除");
+      renderTagManage();
+    }
+
+    function addNewTag() {
+      const name = document.getElementById("new-tag-name").value.trim();
+      if (!name) { alert("请输入标签名"); return; }
+      // 添加到 localStorage 的独立标签列表
+      const extraTags = JSON.parse(localStorage.getItem("extraTags") || "[]");
+      if (!extraTags.includes(name)) {
+        extraTags.push(name);
+        localStorage.setItem("extraTags", JSON.stringify(extraTags));
+      }
+      alert("标签已添加（可在编辑文章时选用）");
+      renderTagManage();
     }
 
     function renderAbout() {
