@@ -4288,9 +4288,22 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     let sortMode = "desc"; // desc = 倒序, asc = 正序
 
     // 合并静态文章和用户创建的文章
+    function getHiddenSlugs() {
+      try { return JSON.parse(localStorage.getItem("hiddenSlugs") || "[]"); } catch { return []; }
+    }
+    function hideSlug(slug) {
+      const list = getHiddenSlugs();
+      if (!list.includes(slug)) { list.push(slug); localStorage.setItem("hiddenSlugs", JSON.stringify(list)); }
+    }
+    function unhideSlug(slug) {
+      const list = getHiddenSlugs().filter(s => s !== slug);
+      localStorage.setItem("hiddenSlugs", JSON.stringify(list));
+    }
+
     function getAllPosts() {
       const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      return [...userPosts, ...POSTS];
+      const hidden = getHiddenSlugs();
+      return [...userPosts, ...POSTS].filter(p => !hidden.includes(p.slug));
     }
 
     function saveUserPost(post) {
@@ -4508,7 +4521,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const slug = oldSlug || ("user-" + Date.now().toString(36));
       const excerpt = content.slice(0, 120).replace(/\n/g, " ") + "...";
 
-      const post = { slug, title, date, category, tags, excerpt, content };
+      const now = new Date().toISOString().slice(0,10);
+      const post = { slug, title, date, category, tags, excerpt, content, updatedAt: now };
       saveUserPost(post);
       closeModal();
       navigate("post", slug);
@@ -4516,8 +4530,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     function deletePost(slug) {
-      if (!confirm("确定删除这篇文章吗？")) return;
-      deleteUserPost(slug);
+      if (!confirm("确定删除这篇文章吗？\n删除后可以从管理页面的回收站恢复。")) return;
+      if (slug.startsWith("user-")) {
+        deleteUserPost(slug);
+      } else {
+        hideSlug(slug);
+      }
       closeModal();
       navigate("home");
       handleRoute();
@@ -4783,17 +4801,66 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     // ===== 路由 =====
-    let savedScrollY = 0; // 保存主页滚动位置
+    const SCROLL_TTL = 3 * 60 * 1000; // 3分钟
 
-    function navigate(route, param) {
-      // 离开主页前保存滚动位置
-      const hash = window.location.hash.slice(1) || "home";
-      if (hash === "home" && route !== "home") {
-        savedScrollY = window.scrollY;
-      }
+    function saveScrollState(key) {
+      sessionStorage.setItem("scroll_" + key, JSON.stringify({ y: window.scrollY, t: Date.now() }));
+    }
+    function restoreScrollState(key) {
+      const raw = sessionStorage.getItem("scroll_" + key);
+      if (!raw) return false;
+      const { y, t } = JSON.parse(raw);
+      if (Date.now() - t > SCROLL_TTL) { sessionStorage.removeItem("scroll_" + key); return false; }
+      setTimeout(() => window.scrollTo({ top: y, behavior: "instant" }), 0);
+      sessionStorage.removeItem("scroll_" + key);
+      return true;
+    }
+
+    // 记录上一页，用于智能返回
+    function getPrevRoute() {
+      try { return JSON.parse(sessionStorage.getItem("routeHistory") || "[]"); } catch { return []; }
+    }
+    function pushRouteHistory(route, param) {
+      const arr = getPrevRoute();
+      arr.push({ route, param, time: Date.now() });
+      if (arr.length > 10) arr.shift();
+      sessionStorage.setItem("routeHistory", JSON.stringify(arr));
+    }
+    function popRouteHistory() {
+      const arr = getPrevRoute();
+      return arr.pop() || null;
+    }
+
+    function navigate(route, param, opts = {}) {
+      const { replace = false, saveScroll = true } = opts;
+      const currentHash = window.location.hash.slice(1) || "home";
+      const currentRoute = currentHash.split("/")[0];
+
+      // 离开当前页前保存滚动位置
+      if (saveScroll && currentRoute === "home") saveScrollState("home");
+      if (saveScroll && currentRoute === "tag") saveScrollState("tag_" + currentHash.split("/")[1]);
+
       let h = route;
       if (param) h += "/" + encodeURIComponent(param);
-      window.location.hash = h;
+
+      if (replace) {
+        window.location.replace("#" + h);
+      } else {
+        window.location.hash = h;
+      }
+
+      // 记录历史
+      if (!replace) pushRouteHistory(currentRoute, currentHash.split("/")[1]);
+    }
+
+    function goBack() {
+      // 如果有历史记录，智能返回；否则回首页
+      const prev = popRouteHistory();
+      if (prev && prev.route) {
+        navigate(prev.route, prev.param, { replace: true });
+      } else {
+        navigate("home", null, { replace: true });
+      }
     }
 
     function handleRoute() {
@@ -4808,11 +4875,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const navEl = document.getElementById(navId);
       if (navEl) navEl.classList.add("active");
 
-      // 回到主页时恢复滚动位置，其他页面滚到顶部
-      if (route === "home" && savedScrollY > 0) {
-        setTimeout(() => window.scrollTo(0, savedScrollY), 50);
-        savedScrollY = 0;
-      } else {
+      // 滚动位置管理：3分钟内返回恢复位置
+      let restored = false;
+      if (route === "home") {
+        restored = restoreScrollState("home");
+      } else if (route === "tag" && param) {
+        restored = restoreScrollState("tag_" + param);
+      }
+      if (!restored && route !== "post") {
         window.scrollTo(0, 0);
       }
 
@@ -4946,7 +5016,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <span>·</span>
             ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
             <span>${post.tags.length} 个标签</span>
-            ${isAdmin && post.slug.startsWith("user-") ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
+            ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
           </div>
           <h3>${post.title}</h3>
           <p class="excerpt">${post.excerpt}</p>
@@ -4974,11 +5044,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
       app.innerHTML = `
         <div class="post-detail page-enter">
-          <span class="back-link" onclick="navigate('home')">← 返回首页</span>
-          ${isAdmin && post.slug.startsWith("user-") ? `<div style="margin:8px 0;"><button class="post-edit-btn" onclick="openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="deletePost('${post.slug}')">删除</button></div>` : ""}
+          <span class="back-link" onclick="goBack()">← 返回</span>
+          ${isAdmin ? `<div style="margin:8px 0;"><button class="post-edit-btn" onclick="openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="deletePost('${post.slug}')">删除</button></div>` : ""}
           <h1>${post.title}</h1>
           <div class="post-meta">
             <time>${formatDate(post.date)}</time>
+            ${post.updatedAt ? `<span style="color:var(--fg-light);font-size:13px;">（修改于 ${formatDate(post.updatedAt)}）</span>` : ""}
             <span>·</span>
             <span style="color:var(--fg-light);font-size:13px;">${views} 次阅读</span>
             <span>·</span>
@@ -5068,7 +5139,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               <time>${formatDate(post.date)}</time>
               <span>·</span>
               <span>${post.tags.length} 个标签</span>
-              ${isAdmin && post.slug.startsWith("user-") ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
+              ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
             </div>
             <h3>${post.title}</h3>
             <p class="excerpt">${post.excerpt}</p>
@@ -5118,7 +5189,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               <time>${formatDate(post.date)}</time>
               <span>·</span>
               <span>${post.tags.length} 个标签</span>
-              ${isAdmin && post.slug.startsWith("user-") ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
+              ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
             </div>
             <h3>${post.title}</h3>
             <p class="excerpt">${post.excerpt}</p>
