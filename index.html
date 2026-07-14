@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>铸言</title>
   <meta name="description" content="铸言 —— 个人写作博客">
+  <!-- ===== 社交分享卡片 (Open Graph / Twitter Cards) ===== -->
+  <meta property="og:site_name" content="铸言">
+  <meta property="og:title" content="铸言">
+  <meta property="og:description" content="一个会随天气落雨的文学博客——散文、小说、诗词与校园纪游。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mmax423.github.io/MyPlog/">
+  <meta property="og:image" content="https://mmax423.github.io/MyPlog/og-cover.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="铸言">
+  <meta name="twitter:description" content="一个会随天气落雨的文学博客——散文、小说、诗词与校园纪游。">
+  <meta name="twitter:image" content="https://mmax423.github.io/MyPlog/og-cover.png">
+  <!-- ===== RSS 订阅源 ===== -->
+  <link rel="alternate" type="application/rss+xml" title="铸言 · RSS" href="rss.xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Liu+Jian+Mao+Cao&family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -301,6 +314,14 @@
       letter-spacing: 1px;
     }
     .nav-quote-bar:hover .nq-hint { opacity: 1; }
+    .nq-tag {
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      opacity: 0.85;
+      white-space: nowrap;
+    }
+    body.dark .nq-tag { color: #c9b07a; }
     body.dark .nav-quote-bar { background: #232220; border-color: #34322e; }
     body.dark .nav-quote-bar:hover { background: #2a2826; }
 
@@ -1003,6 +1024,13 @@
       color: var(--fg-light);
       letter-spacing: 0.5px;
     }
+    .footer-sub {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px dashed var(--border-hover);
+      transition: color 0.2s ease;
+    }
+    .footer-sub:hover { color: var(--accent-hover); }
 
     /* ===== Loading ===== */
     .loading {
@@ -1327,6 +1355,27 @@
     .like-btn.liked { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
     .like-btn .heart { transition: transform 0.3s ease; }
     .like-btn.liked .heart { transform: scale(1.3); }
+    .share-btn { background: none; border: 1px solid var(--border); border-radius: 20px; padding: 6px 16px; cursor: pointer; transition: var(--transition); font-size: 14px; color: var(--fg-muted); display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-sans); }
+    .share-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .share-icon { font-size: 15px; line-height: 1; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 42px;
+      transform: translateX(-50%) translateY(18px);
+      background: rgba(30,28,25,0.92);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-size: 14px;
+      letter-spacing: 1px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 9999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    body.dark .toast { background: rgba(240,235,225,0.96); color: #232220; }
 
     /* ===== 评论区 ===== */
     .comment-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
@@ -1518,6 +1567,7 @@
     <!-- 导航栏金句：每天一句，点击随机切换 -->
     <div class="nav-quote-bar" id="nav-quote" onclick="randomizeNavQuote()" title="点击换一句">
       <span class="nq-mark">“</span>
+      <span class="nq-tag" id="nq-tag" style="display:none"></span>
       <span class="nq-text" id="nq-text"></span>
       <span class="nq-src" id="nq-src" onclick="event.stopPropagation();navigate('post', currentNavQuoteSlug)"></span>
       <span class="nq-hint">点击换一句</span>
@@ -1533,6 +1583,7 @@
           <span style="font-family:var(--font-cursive);font-size:22px;letter-spacing:4px;transform:rotate(-2deg);display:inline-block;">铸言</span>
         </div>
         <p>© 2026 铸言 · <span id="busuanzi_value_site_pv">0</span> 次访问 · <span id="busuanzi_value_site_uv">0</span> 位访客</p>
+        <p><a href="rss.xml" class="footer-sub">订阅 RSS</a> · 用阅读器追更，不遗漏每一篇</p>
       </div>
     </footer>
   </div>
@@ -1703,7 +1754,67 @@
       { text: "去年的三月一号，一则新闻顶上热搜，我清楚记得那抓人眼球的标题：《地球，迎来了它真正的主人？》", title: "超人奇异故事", date: "2025-11-14", slug: "article-834f9f395879" },
       { text: "就这么答应了同伴关于探索树木园的邀约，赶巧周四下午有了空闲，不如去走一遭，还比孤伶伶一个要强", title: "“笔触校园、文彰华农”系列之十八:树木园", date: "2026-05-18", slug: "article-7fa9642fb974" },
       { text: "形似的相片交织拼凑，彼此的记忆此时融在一起，万字长的留言尽是思念，实时更新的文字尽显内心火花", title: "念旧", date: "2025-10-25", slug: "article-014f5b92805f" },
-    ];
+    
+      { text: "我想我应该算是喜欢极了，所以我举起了手，但在放下后又不禁思考：我又写过多少文章、抒发过几句感慨呢", title: "第一学期作文写作规划", date: "2025-09-20", slug: "article-15d7f0d29f9a" },
+      { text: "幸而有这校园可以让我外出走一遭，寻思舒缓舒缓，由是安定下来情绪，便出了门", title: "“笔触校园、文彰华农”系列之十三:洪泽湖", date: "2026-04-21", slug: "article-4a7b1decd1c0" },
+      { text: "入门便是铺展在墙面的世界地图，其上，标着世界上一些热带亚热带地区的诸如蝶、蛾等的代表性昆虫", title: "“笔触校园、文彰华农”系列之十一:热带亚热带昆虫博物馆", date: "2026-04-03", slug: "article-18171bcb704e" },
+      { text: "何非的行径，使我们对观众生出的恐慌与抗拒情绪有迹可循", title: "《消失的她》影评", date: "2026-03-19", slug: "article-2aa0c47028d5" },
+      { text: "我第一次来到这里，是在开学后的入学教育活动中", title: "“笔触校园、文彰华农”系列之三:华南农业博物馆", date: "2026-02-05", slug: "article-e47e87f61915" },
+      { text: "**假如生命是一朵花，**", title: "诗 · 假如生命是一朵花， · 山上花好丰繁，", date: "2026-04-06", slug: "article-570a4f1dd201" },
+      { text: "稍不注意，看叶的目光被夕阳烧透，冷清的天色照进心窗，夜晚来了，浅浅的凉意，攀附上光着的脚踝与脖颈", title: "空", date: "2026-01-24", slug: "article-b7612b71c085" },
+      { text: "一览室内，是错综摆置的一竖竖展柜，满满当当的藏品填满柜子，就连校农博馆的昆虫展厅的标本也是出产自此的", title: "“笔触校园、文彰华农”系列之十一:热带亚热带昆虫博物馆", date: "2026-04-03", slug: "article-18171bcb704e" },
+      { text: "我期盼着写出犀利的文章来，可若自作主张地随意发声，毫无逻辑情理，那还是不便做的好", title: "第二学期春夏段写作总结", date: "2026-06-08", slug: "article-342fbcae897a" },
+      { text: "本篇叙述有关恋情的内容", title: "情感具象化（1）", date: "2025-09-25", slug: "article-ea3b4a8ad04d" },
+      { text: "”我们不禁发问，若是真正入了大道，又岂会因眼前种种动摇颇多，惦念至此", title: "读《悉达多》第一部有感", date: "2026-03-10", slug: "article-c7c42e5c57b8" },
+      { text: "山林枝叶树摆，晃呀晃，月娘无言，只挑逗式地跟了我一路，指点我这儿江水滚滚，提醒我那儿烟火轰隆", title: "随笔简录", date: "2026-02-26", slug: "article-26f621f8ec8a" },
+      { text: "我先去了丁颖纪念馆，而后再移步至隔壁的卢永根纪念展", title: "“笔触校园、文彰华农”系列之二十:丁颖纪念馆、卢永根先进事迹陈列展", date: "2026-06-02", slug: "article-7264aa24aa53" },
+      { text: "往来学子步履匆匆，鲜少有人驻足细赏，它便安安静静卧在校园一隅，守着独属于自己的清幽", title: "“笔触校园、文彰华农”系列之十三:昭阳湖", date: "2026-04-15", slug: "article-1b2b45c9dde4" },
+      { text: "你瞧，“天堂伞”，多圣洁的名字", title: "《布鲁克林有棵树》书评", date: "2026-01-21", slug: "article-aaf30958ee01" },
+      { text: "环绕这湖泊，有人懒散漫着步，兴许是年过花甲双鬓斑白的老人，走走停停", title: "“笔触校园、文彰华农”系列之十七:鄱阳湖", date: "2026-05-15", slug: "article-e37a14020877" },
+      { text: "十分正确，大学的时间是非常自由的，你可以将时间分配给任何你想要去做的事情上", title: "大学学习的困惑", date: "2025-11-04", slug: "article-a96f097f9454" },
+      { text: "记得起，大同离世后，我同妈妈说，“一个很知名的歌手他最近去世了", title: "梦想家", date: "2026-02-17", slug: "article-bafdd9622069" },
+      { text: "在小区地下室，教练是个五十多岁的男人，姓刘，学生们叫他刘哥", title: "学游泳", date: "2026-05-24", slug: "article-2a7666c084f9" },
+      { text: "江向晚——19岁女大学生", title: "晚霞", date: "2026-05-21", slug: "article-0fa5329b75b2" },
+      { text: "那么这些新词是否有其共性呢", title: "刘美君教授讲座报道", date: "2025-11-24", slug: "article-dea90da24831" },
+      { text: "这样的冬天怎么能算冬天", title: "空", date: "2026-01-24", slug: "article-b7612b71c085" },
+      { text: "因此在这儿参观可务须要有专门的讲解老师，听着看着，视听结合，这才算真正游览了、了解了这一处景观", title: "“笔触校园、文彰华农”系列之九:水稻生产机械化博览馆", date: "2026-03-22", slug: "article-10556b706f82" },
+      { text: "无云的夜里，她在天上挂了多久飘带，香飘了一路，飘了一夜，飘了一年，迷得我日思夜想，恨不得落泪", title: "随笔简录", date: "2026-02-26", slug: "article-26f621f8ec8a" },
+      { text: "进一步来说，又能否利用它来预测不断变迁的词语的兴衰", title: "刘美君教授讲座报道", date: "2025-11-24", slug: "article-dea90da24831" },
+      { text: "红满堂，起初光听名字，我不知道它究竟是什么样的建筑，有什么功能呢", title: "“笔触校园、文彰华农”系列之二：红满堂", date: "2026-01-30", slug: "article-bb2444ccf574" },
+      { text: "待蒸蛋机叮咚一声，陈波这才决定下楼溜达两圈，听说附近新开了家咖啡店，想去看看", title: "灰尘中的叹息", date: "2025-11-09", slug: "article-b6fc0cf3dec3" },
+      { text: "雨来，浇灭狂乱的火，", title: "呼号", date: "2026-05-06", slug: "article-5e064f2f61e5" },
+      { text: "根据报道，两天两夜的时间里，它们什么也没干，就那样定格在太平洋中心上空，直到有人出现，尝试与其交流", title: "超人奇异故事", date: "2025-11-14", slug: "article-834f9f395879" },
+      { text: "印象里它是火红的，而不似眼前与周遭遥相呼应的翠绿", title: "“笔触校园、文彰华农”系列之十二:善境花园", date: "2026-04-12", slug: "article-aae1c6ba555d" },
+      { text: "日常练笔中，我开始有意识地运用课程所学审视自己的文字", title: "“基础写作”课程学习总结", date: "2025-12-09", slug: "article-85e2c3ee50ef" },
+      { text: "高中的时光固然煎熬，但在这三年的熬煮里也不免酝酿出甘甜", title: "念旧", date: "2025-10-25", slug: "article-014f5b92805f" },
+      { text: "我的内心突发感触，不由得生发出这样的几句来", title: "“笔触校园、文彰华农”系列之十三:洪泽湖", date: "2026-04-21", slug: "article-4a7b1decd1c0" },
+      { text: "有的孩子喝的奶是凉的，有的是温热的，有的孩子连瓶子都没见到过", title: "情感具象化（2）", date: "2025-10-15", slug: "article-06d271ddd4e9" },
+      { text: "理论与观念的转变同样需要落实到创作实践当中，唯在实践中能真正实现我创作的诉求", title: "全部写作总结", date: "2026-06-14", slug: "article-474d055d7a52" },
+      { text: "陈波哆哆嗦嗦，在被窝里套上羊毛衫，灰头土脸地到洗手间里放水", title: "灰尘中的叹息", date: "2025-11-09", slug: "article-b6fc0cf3dec3" },
+      { text: "在提不起劲的时来上一首情绪高亢的歌，自己重新提振起信心来……", title: "谈：音乐之于生活的不可或缺", date: "2026-02-11", slug: "article-3eb8e2042a69" },
+      { text: "涵盖了学生整理的深井村变迁史、深井村特色美食介绍（深井烧鹅等）、深井村地图、深井村老物件展览……", title: "对深井村发展现状的调研活动", date: "2025-10-30", slug: "article-9e530b772d9d" },
+      { text: "”我摇了摇头，我是从我家走过来的", title: "日常的一天", date: "2026-02-20", slug: "article-6aa3f1ffb9c2" },
+      { text: "行政楼前，一片茂盛绿树，与茵茵草地铺陈，中央是阶梯式的行政楼广场，澄澈的天空上飘扬闪耀的五星红旗", title: "“笔触校园、文彰华农”系列之七:稻香草海", date: "2026-03-01", slug: "article-38bd0ae0307d" },
+      { text: "原本假期伊始兴冲冲要广泛涉猎不同文本，以此尝试、挖掘个人写作广度", title: "寒假作文写作总结", date: "2026-03-13", slug: "article-3ee49c128002" },
+      { text: "我们学校竟然还有这么一块地方吗，光是想象就是一副山的图景", title: "“笔触校园、文彰华农”系列之十八:树木园", date: "2026-05-18", slug: "article-7fa9642fb974" },
+      { text: "有经过对相应篇章的提前熟悉，对何老师的课程就显得能更加得心应手了地学习了", title: "中国古代文学史学习总结", date: "2025-12-04", slug: "article-261c366d70df" },
+      { text: "这纷扰从心底湖底升天直入大脑当中，火与冷的知觉降临身体湖面，激溅的纷飞当然仍旧是我本身", title: "“笔触校园、文彰华农”系列之十五：西湖", date: "2026-04-30", slug: "article-dd4f9104c47f" },
+      { text: "相纸里是我们曾经的笑颜，是我们老师同学，是学校的操场，是一帮嬉闹的小孩", title: "念旧", date: "2025-10-25", slug: "article-014f5b92805f" },
+      { text: "我一如既往地通勤上课，只是发觉蓝天阴了脸，路上改换了冷风，吹得脸干，这不抗冻的身子也不免蜷起来", title: "迎冬", date: "2025-10-20", slug: "article-43147f71b14e" },
+      { text: "因素材积累少、阅读量不够导致认知单薄", title: "第一学期作文写作总结", date: "2025-12-19", slug: "article-de26e5351568" },
+      { text: "计划就期末写作训练总结几大问题进行：", title: "寒假作文写作规划", date: "2026-01-15", slug: "article-5827ca965966" },
+      { text: "招工广场门前有一处公示栏，上边糊满了招租的纸，叫人好似回到父辈时代，还不乏招工的纸面", title: "脱离", date: "2026-04-24", slug: "article-ecc62ace1411" },
+      { text: "《现代汉语》一整本书都溢满了新鲜的知识点，单单一个专有名词就能让人晕头转向", title: "“现代汉语Ⅰ”课程学习体会", date: "2025-12-14", slug: "article-6b19d8108d42" },
+      { text: "本学期教学内容涵盖两单元，一是语音，二是词汇，其中最为困难的，想来肯定是语音", title: "“现代汉语Ⅰ”课程学习体会", date: "2025-12-14", slug: "article-6b19d8108d42" },
+      { text: "报到当天，启林北的宿舍区叫我印象深刻，初觉偏僻难寻，在当晚的探索我又见证这儿晚间的美丽", title: "初识华农", date: "2025-10-10", slug: "article-5e19a0845801" },
+      { text: "出来浴室，头发湿和着汗与体表的高温是最惹眼的，还有脸红", title: "夏夜", date: "2026-05-27", slug: "article-ade58cc6a298" },
+      { text: "小妮呀，到了学校呢，你要老老实实的，不要像在家里一样胡闹了昂，听老师的话", title: "读书", date: "2026-05-12", slug: "article-41861ff004ff" },
+      { text: "若要挟着心里的小自我遥想东西，岂不是一种作孽、平添困扰么", title: "游园记", date: "2026-04-09", slug: "article-0370540c63b0" },
+      { text: "又会有什么样的人在台上发言", title: "“笔触校园、文彰华农”系列之二：红满堂", date: "2026-01-30", slug: "article-bb2444ccf574" },
+      { text: "我的好友听了一定打趣我，毕竟这些日子可没少见我与她呆在一起", title: "雨天", date: "2026-04-18", slug: "article-991f08fe6403" },
+      { text: "此版本姑姑是被山上老虎叼走的）”，是故此鸟又称为“姑虎鸟", title: "乡下小记", date: "2026-03-04", slug: "article-8f08ad3ebe2c" },
+      { text: "”我的妈妈回答，生老病死是人生常态，不管什么时候，都有人在离去", title: "梦想家", date: "2026-02-17", slug: "article-bafdd9622069" },
+      { text: "一名女子对着电话那头说:“现在做什么都没用了，结束了，完了，我今天晚上就离开镇子", title: "落日", date: "2026-02-02", slug: "article-c5fd5226aa68" },];
 
     // ===== 博客文章数据 =====
     const POSTS = [
@@ -5161,6 +5272,48 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
     }
 
+    // ===== 分享文章 =====
+    function showToast(msg) {
+      let t = document.getElementById("toast");
+      if (!t) {
+        t = document.createElement("div");
+        t.id = "toast";
+        t.className = "toast";
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+    }
+    function sharePost(slug) {
+      const post = getAllPosts().find(p => p.slug === slug);
+      const title = post ? post.title : "铸言";
+      const url = location.origin + location.pathname + "#post/" + encodeURIComponent(slug);
+      const data = { title: title, text: "来自「铸言」的文章：" + title, url: url };
+      if (navigator.share) {
+        navigator.share(data).catch(() => {});
+        return;
+      }
+      const done = () => showToast("链接已复制，去分享吧");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => fallbackCopy(url, done));
+      } else {
+        fallbackCopy(url, done);
+      }
+    }
+    function fallbackCopy(text, cb) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+      if (cb) cb();
+    }
+
     // ===== 评论 =====
     function getComments(slug) {
       const comments = JSON.parse(localStorage.getItem(COMMENTS_KEY) || "{}");
@@ -5829,6 +5982,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             </button>
             <span class="stat-item"><span class="icon">👁</span> ${views}</span>
             <span class="stat-item"><span class="icon">💬</span> ${comments.length}</span>
+            <button class="share-btn" onclick="sharePost('${post.slug}')">
+              <span class="share-icon">↗</span> 分享
+            </button>
           </div>
 
           ${commentBlock}
@@ -6297,18 +6453,108 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       if (node) node.classList.toggle("open");
     }
 
-    // ===== 导航栏金句 =====
+    // ===== 导航栏金句（特别日应景）=====
     let currentNavQuoteSlug = "";
-    function getNavDailyIndex() {
+    let currentNavQuoteText = "";
+    let currentPlaylist = [];   // 当前轮播列表（应景句排前，播完接普通句）
+    let currentTagCount = 0;     // 前 N 条为应景（显示标签）
+    let currentPos = 0;          // 当前轮播位置
+    // 标签词库：标签 -> 触发关键词，构成「金句 × 特别日」的关联数据库
+    const QUOTE_TAGS = {
+      "雨": ["雨","落雨","阴雨","檐","淋","潮湿","雨珠","下雨","雨幕"],
+      "雪": ["雪","落雪","飞雪","冰沙","霜"],
+      "雾": ["雾","朦胧","迷蒙","烟"],
+      "风": ["风","清风","风掠","风从","风一样"],
+      "月": ["月","月娘","月光","月色"],
+      "春": ["春","花开","花簇","花好","春风","花香"],
+      "夏": ["夏","暑","蝉"],
+      "秋": ["秋","落叶","枫","暗下来"],
+      "冬": ["冬","寒","冷","冰"],
+      "夜": ["夜","夜晚","夜里","入夜"],
+      "水": ["湖","水","河","溪","潺潺","波纹"],
+      "火": ["火","烧","雷"],
+      "花": ["花"],
+      "离别": ["别","散","走","告别","离去"],
+      "思念": ["念","忆","乡愁","想","悠悠"],
+      "清明": ["清明","祭","墓","寒食","扫墓","扫"]
+    };
+    function getSeasonTag() {
+      const m = new Date().getMonth() + 1;
+      if (m >= 3 && m <= 5) return "春";
+      if (m >= 6 && m <= 8) return "夏";
+      if (m >= 9 && m <= 11) return "秋";
+      return "冬";
+    }
+    // 特别日（节气/节日）标签，按当前日期判定，可扩展
+    function getFestivalTag() {
+      const d = new Date();
+      const m = d.getMonth() + 1, day = d.getDate();
+      if (m === 4 && day >= 4 && day <= 6) return "清明";
+      return null;
+    }
+    // 当前生效的特别日标签：天气优先，其次节日，其次季节
+    function getActiveTags() {
+      const tags = [];
+      const w = window.__weatherMode;
+      if (w === "rain") tags.push("雨");
+      else if (w === "snow") tags.push("雪");
+      else if (w === "fog") tags.push("雾");
+      const f = getFestivalTag();
+      if (f) tags.push(f);
+      tags.push(getSeasonTag());
+      return tags;
+    }
+    function quoteHitScore(q, tags) {
+      let s = 0;
+      for (const t of tags) {
+        const kws = QUOTE_TAGS[t] || [];
+        if (kws.some(k => q.text.includes(k))) s++;
+      }
+      return s;
+    }
+    // 当前应景标签（用于徽章显示的核心词，如「雨」「雪」「清明」）
+    function activeDisplayTag() {
+      const tags = getActiveTags();
+      for (const t of tags) {
+        const kws = QUOTE_TAGS[t] || [];
+        if (kws.length && USER_QUOTES.some(q => kws.some(k => q.text.includes(k)))) return t;
+      }
+      return null;
+    }
+    // 播放列表：应景句子排前（带标签），播完自动接普通句子（不带标签），循环轮播
+    function rebuildPlaylist() {
+      const tags = getActiveTags();
+      const matched = USER_QUOTES
+        .map(q => ({ q, score: quoteHitScore(q, tags) }))
+        .filter(x => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(x => x.q);
+      const rest = USER_QUOTES.filter(q => !matched.includes(q));
+      if (matched.length) {
+        currentPlaylist = matched.concat(rest);
+        currentTagCount = matched.length;
+      } else {
+        currentPlaylist = USER_QUOTES.slice();
+        currentTagCount = 0;
+      }
+      currentPos = 0;
+    }
+    function getNavDailyIndex(n) {
       const today = new Date();
       const dayIndex = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
-      return ((dayIndex % USER_QUOTES.length) + USER_QUOTES.length) % USER_QUOTES.length;
+      return ((dayIndex % n) + n) % n;
     }
-    function setNavQuote(q) {
+    function setNavQuote(q, tag) {
       const textEl = document.getElementById("nq-text");
       const srcEl = document.getElementById("nq-src");
+      const tagEl = document.getElementById("nq-tag");
       if (!textEl) return;
       currentNavQuoteSlug = q.slug;
+      currentNavQuoteText = q.text;
+      if (tagEl) {
+        if (tag) { tagEl.textContent = tag; tagEl.style.display = ""; }
+        else { tagEl.style.display = "none"; }
+      }
       textEl.style.opacity = "0";
       setTimeout(() => {
         textEl.textContent = q.text;
@@ -6316,19 +6562,24 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         textEl.style.opacity = "1";
       }, 200);
     }
+    // 显示播放列表中第 pos 条；前 currentTagCount 条带标签，其余不带
+    function showAt(pos) {
+      const q = currentPlaylist[pos];
+      const tag = pos < currentTagCount ? activeDisplayTag() : null;
+      setNavQuote(q, tag);
+    }
     function renderNavQuote() {
-      const bar = document.getElementById("nav-quote");
-      if (!bar || !USER_QUOTES.length) return;
-      setNavQuote(USER_QUOTES[getNavDailyIndex()]);
+      if (!USER_QUOTES.length) return;
+      rebuildPlaylist();
+      // 特别日：从第一条应景句开始（带标签）；平常日：按当日序号取一句
+      currentPos = currentTagCount > 0 ? 0 : getNavDailyIndex(currentPlaylist.length);
+      showAt(currentPos);
     }
     function randomizeNavQuote() {
       if (!USER_QUOTES.length) return;
-      const cur = getNavDailyIndex();
-      let i = cur;
-      if (USER_QUOTES.length > 1) {
-        while (i === cur) i = Math.floor(Math.random() * USER_QUOTES.length);
-      }
-      setNavQuote(USER_QUOTES[i]);
+      if (!currentPlaylist.length) rebuildPlaylist();
+      currentPos = (currentPos + 1) % currentPlaylist.length;
+      showAt(currentPos);
     }
 
     // ===== 滚动渐入动画 =====
@@ -6487,6 +6738,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const statusEl = document.getElementById("weather-status");
       const statusText = document.getElementById("ws-text");
       let mode = "off";
+      let lastBase = null;   // 最近一次真实天气的基础模式（rain/snow/fog/sun）
       let raf = null;
       let particles = [];
       let dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -6659,6 +6911,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         if (dot) dot.style.background = info[0];
         if (statusText) statusText.textContent = label || info[1];
         statusEl.classList.add("show");
+        window.__weatherMode = m;   // 供金句栏判断特别日（雨/雪/雾）
+        if (typeof renderNavQuote === "function") renderNavQuote();
       }
 
       function setStatus(t) { if (statusText) statusText.textContent = t; }
@@ -6677,11 +6931,17 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         if (code >= 95) return "雷阵雨";
         return "未知";
       }
-      function weatherMode(code, isDay) {
-        if (code <= 3) return isDay ? "sun" : "stars";          // 晴/少云/阴 → 晴或星
+      // 基础模式：只由真实天气决定，不区分昼夜
+      function weatherMode(code) {
+        if (code <= 3) return "sun";                            // 晴/少云/阴 → 晴（昼夜由主题决定）
         if (code === 45 || code === 48) return "fog";           // 雾 → 雾气动效
         if ([71,73,75,77,85,86].includes(code)) return "snow";  // 雪 → 飘雪动效
         return "rain";                                          // 其余（雨/阵雨/毛毛雨/雷阵雨）均为雨幕
+      }
+      // 显示模式：雨/雪/雾 优先级最高（日夜间都按真实天气走）；仅「夜间模式 + 非雨」才星空
+      function resolveMode(base) {
+        if (base !== "sun") return base;          // 雨/雪/雾 不受主题影响
+        return isDark() ? "stars" : "sun";        // 非雨：夜间星空，日间晴天
       }
 
       // 真实天气：每次访问请求定位授权 → open-meteo（免费、无需 key、支持 CORS）
@@ -6696,9 +6956,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               .then(d => {
                 const code = d?.current?.weather_code ?? 0;
                 const isDay = d?.current?.is_day !== 0;
-                setMode(weatherMode(code, isDay), "当下 · " + weatherLabel(code, isDay));
+                const base = weatherMode(code);
+                lastBase = base;
+                setMode(resolveMode(base), "当下 · " + weatherLabel(code, isDay));
               })
-              .catch(() => setMode("rain", "天气获取失败 · 默认雨"));
+              .catch(() => { lastBase = "rain"; setMode("rain", "天气获取失败 · 默认雨"); });
           },
           () => setMode("off", "未授权定位 · 已关闭动效"),
           { timeout: 9000, maximumAge: 600000 }
@@ -6712,6 +6974,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       // 夜间模式自动开星空；手动覆盖优先
       function syncToTheme() {
         if (localStorage.getItem("weather-manual")) return;
+        if (lastBase && lastBase !== "sun") return;   // 雨/雪/雾 不受主题影响，保持当前
         if (document.body.classList.contains("dark")) setMode("stars", "夜间模式 · 星空");
         else autoWeather();
       }
@@ -6724,11 +6987,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         const manual = localStorage.getItem("weather-manual");
         if (manual) {
           setMode(manual, "测试 · " + manualLabel(manual));
-        } else if (document.body.classList.contains("dark")) {
-          setMode("stars", "夜间模式 · 星空");
-        } else {
-          autoWeather();
+          return;
         }
+        // 夜间先给星空占位，再拉真实天气；真实是雨/雪/雾时会自动覆盖为对应动效
+        if (document.body.classList.contains("dark")) setMode("stars", "夜间模式 · 星空");
+        autoWeather();
       }
 
       return { init, setMode, auto: autoWeather, syncToTheme };
