@@ -1366,6 +1366,22 @@
     .traffic-card .num { font-size: 28px; font-weight: 700; color: var(--accent); font-family: var(--font-serif); }
     .traffic-card .label { font-size: 12px; color: var(--fg-light); margin-top: 4px; }
 
+    /* ===== 阅读时长 / 徽章 / 系列 ===== */
+    .reading-time { font-size: 12px; color: var(--fg-light); margin: 6px 0 2px; }
+    .post-meta-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 13px; color: var(--fg-light); }
+    .reading-time-inline { font-size: 13px; color: var(--fg-light); }
+    .pin-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: linear-gradient(135deg,#f6d365,#fda085); color: #fff; font-size: 12px; font-weight: 600; }
+    .draft-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #888; color: #fff; font-size: 12px; }
+    .series-tag { cursor: pointer; background: var(--tag-bg); }
+    .series-tag:hover { background: var(--accent); color: #fff; }
+    .post-series { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .series-line { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+    .autosave-note { background: rgba(99,102,241,0.1); color: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; margin-bottom: 12px; }
+    .editor-toggles { display: flex; flex-wrap: wrap; gap: 16px; }
+    .toggle-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg); cursor: pointer; }
+    .toggle-inline input { width: auto; }
+    #giscus-host { margin-top: 24px; }
+
 
     /* ===== 响应式 ===== */
     @media (max-width: 640px) {
@@ -1425,7 +1441,7 @@
         <div class="footer-brand">
           <span style="font-family:var(--font-cursive);font-size:22px;letter-spacing:4px;transform:rotate(-2deg);display:inline-block;">铸言</span>
         </div>
-        <p>© 2026 铸言</p>
+        <p>© 2026 铸言 · <span id="busuanzi_value_site_pv">0</span> 次访问 · <span id="busuanzi_value_site_uv">0</span> 位访客</p>
       </div>
     </footer>
   </div>
@@ -1441,6 +1457,8 @@
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
+  <!-- 真实全站访问量（跨设备，第三方不蒜子） -->
+  <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
   <script>
     marked.setOptions({ breaks: false, gfm: true });
 
@@ -4565,6 +4583,44 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     const TRAFFIC_KEY = "zhuer_blog_traffic";
     const TAGS_KEY = "zhuer_blog_custom_tags";
 
+    // ===== 真评论（GitHub Discussions / giscus） =====
+    // 启用步骤：1) 在 https://giscus.app 用 GitHub 账号授权并选择本仓库；
+    //          2) 创建一个「Announcements」类的 Discussions；
+    //          3) 把下面 enabled 改为 true，并填入 repoId / categoryId；
+    //          4) 推送到 GitHub 后，文章页即显示真实跨设备评论。
+    const GISCUS_CONFIG = {
+      enabled: false,
+      repo: "mmax423/MyPlog",
+      repoId: "YOUR_REPO_ID",
+      category: "Announcements",
+      categoryId: "YOUR_CATEGORY_ID",
+      mapping: "title",
+      theme: "preferred_color_scheme"
+    };
+    function loadGiscus(term) {
+      if (!GISCUS_CONFIG.enabled) return;
+      const host = document.getElementById("giscus-host");
+      if (!host) return;
+      host.innerHTML = "";
+      const s = document.createElement("script");
+      s.src = "https://giscus.app/client.js";
+      s.async = true;
+      s.crossOrigin = "anonymous";
+      s.setAttribute("data-repo", GISCUS_CONFIG.repo);
+      s.setAttribute("data-repo-id", GISCUS_CONFIG.repoId);
+      s.setAttribute("data-category", GISCUS_CONFIG.category);
+      s.setAttribute("data-category-id", GISCUS_CONFIG.categoryId);
+      s.setAttribute("data-mapping", GISCUS_CONFIG.mapping);
+      s.setAttribute("data-term", term);
+      s.setAttribute("data-reactions-enabled", "1");
+      s.setAttribute("data-emit-metadata", "0");
+      s.setAttribute("data-input-position", "top");
+      s.setAttribute("data-theme", GISCUS_CONFIG.theme);
+      s.setAttribute("data-lang", "zh-CN");
+      s.setAttribute("data-loading", "lazy");
+      host.appendChild(s);
+    }
+
     let isAdmin = localStorage.getItem(AUTH_KEY) === "true";
     let sortMode = "desc"; // desc = 倒序, asc = 正序
 
@@ -4584,7 +4640,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function getAllPosts() {
       const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const hidden = getHiddenSlugs();
-      return [...userPosts, ...POSTS].filter(p => !hidden.includes(p.slug));
+      let all = [...userPosts, ...POSTS].filter(p => !hidden.includes(p.slug));
+      if (!isAdmin) all = all.filter(p => !p.draft); // 草稿仅管理员可见
+      return all;
     }
 
     function saveUserPost(post) {
@@ -4725,6 +4783,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     function closeModal() {
+      stopAutosave(); // 关闭时停止自动保存计时（缓冲保留以便下次恢复）
       document.getElementById("modal-overlay").classList.remove("open");
     }
 
@@ -4737,6 +4796,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const modal = document.getElementById("modal-content");
       modal.innerHTML = `
         <h2>${post ? "编辑文章" : "写新文章"}</h2>
+        <div id="autosave-note" class="autosave-note" style="display:none;">📝 已恢复自动保存的内容（手动保存前不会生效）</div>
         <div class="field">
           <label>标题</label>
           <input type="text" id="edit-title" value="${post ? post.title.replace(/"/g, '&quot;') : ''}" placeholder="文章标题">
@@ -4764,6 +4824,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         <div class="field">
           <label>标签 (用逗号分隔)</label>
           <input type="text" id="edit-tags" value="${post ? post.tags.join(', ') : ''}" placeholder="散文, 随笔, 生活">
+        </div>
+        <div class="field">
+          <label>系列 / 合集 (多个用逗号分隔，用于「专题」页归类)</label>
+          <input type="text" id="edit-series" value="${post ? (Array.isArray(post.series) ? post.series.join(', ') : (post.series || '')) : ''}" placeholder="如：入学日记, 华农四季">
+        </div>
+        <div class="field editor-toggles">
+          <label class="toggle-inline"><input type="checkbox" id="edit-draft" ${post && post.draft ? 'checked' : ''}> 存为草稿（暂不公开，仅自己可见）</label>
+          <label class="toggle-inline"><input type="checkbox" id="edit-pinned" ${post && post.pinned ? 'checked' : ''}> 设为精选（置顶到列表顶部）</label>
         </div>
         <div class="field">
           <label>正文（富文本，无需手写 Markdown）</label>
@@ -4800,7 +4868,61 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const ed = document.getElementById("edit-content");
       if (ed && post) ed.innerHTML = renderMarkdown(post.content);
       else if (ed) ed.innerHTML = "";
+      // 自动保存：恢复较新的缓冲，并启动定时保存
+      _autosaveSlug = post ? post.slug : "new";
+      tryRestoreAutosave(_autosaveSlug, post);
+      startAutosave(_autosaveSlug);
       document.getElementById("modal-overlay").classList.add("open");
+    }
+
+    // ===== 自动保存 =====
+    let _autosaveTimer = null;
+    let _autosaveSlug = null;
+    function startAutosave(slug) {
+      stopAutosave();
+      _autosaveSlug = slug;
+      _autosaveTimer = setInterval(() => {
+        const ed = document.getElementById("edit-content");
+        if (!ed) return;
+        const buf = {
+          slug,
+          title: document.getElementById("edit-title")?.value || "",
+          date: document.getElementById("edit-date")?.value || "",
+          category: document.getElementById("edit-category")?.value || "",
+          tags: document.getElementById("edit-tags")?.value || "",
+          series: document.getElementById("edit-series")?.value || "",
+          draft: document.getElementById("edit-draft")?.checked || false,
+          pinned: document.getElementById("edit-pinned")?.checked || false,
+          content: getEditorMarkdown(),
+          savedAt: new Date().toISOString()
+        };
+        try { localStorage.setItem("autosave_" + slug, JSON.stringify(buf)); } catch (e) {}
+      }, 5000);
+    }
+    function stopAutosave() {
+      if (_autosaveTimer) { clearInterval(_autosaveTimer); _autosaveTimer = null; }
+    }
+    function clearAutosave(slug) {
+      if (slug) localStorage.removeItem("autosave_" + slug);
+    }
+    function tryRestoreAutosave(slug, post) {
+      let buf;
+      try { buf = JSON.parse(localStorage.getItem("autosave_" + slug) || "null"); } catch { return false; }
+      if (!buf || !buf.content) return false;
+      // 已发布且自动保存更早则放弃恢复
+      if (post && post.updatedAt && buf.savedAt && buf.savedAt < post.updatedAt) return false;
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ""; };
+      set("edit-title", buf.title);
+      set("edit-date", buf.date);
+      set("edit-tags", buf.tags);
+      set("edit-series", buf.series);
+      const ed = document.getElementById("edit-content");
+      if (ed) ed.innerHTML = renderMarkdown(buf.content);
+      const d = document.getElementById("edit-draft"); if (d) d.checked = !!buf.draft;
+      const p = document.getElementById("edit-pinned"); if (p) p.checked = !!buf.pinned;
+      const note = document.getElementById("autosave-note");
+      if (note) note.style.display = "block";
+      return true;
     }
 
     // ===== 富文本编辑器辅助 =====
@@ -4850,6 +4972,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
 
       const tags = tagsStr ? tagsStr.split(/[,，、]/).map(t => t.trim()).filter(t => t) : ["未分类"];
+      const seriesStr = document.getElementById("edit-series").value.trim();
+      const series = seriesStr ? seriesStr.split(/[,，、]/).map(s => s.trim()).filter(Boolean) : [];
+      const draft = document.getElementById("edit-draft").checked;
+      const pinned = document.getElementById("edit-pinned").checked;
       const slug = oldSlug || ("user-" + Date.now().toString(36));
       const imgCount = (content.match(IMG_RE) || []).length;
       let excerpt = content.replace(IMG_RE, " ").replace(/[#>*_`~]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
@@ -4857,8 +4983,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       else if (excerpt.length >= 80) excerpt += "…";
 
       const now = new Date().toISOString().slice(0,10);
-      const post = { slug, title, date, category, tags, excerpt, content, updatedAt: now };
+      const post = { slug, title, date, category, tags, series, draft, pinned, excerpt, content, updatedAt: now };
       saveUserPost(post);
+      clearAutosave(oldSlug || "new");
+      stopAutosave();
       closeModal();
       navigate("post", slug);
       handleRoute();
@@ -5015,11 +5143,48 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <input type="text" class="tag-add-input" id="tag-add-input" placeholder="添加标签..." onkeydown="if(event.key==='Enter')addTagFromInput()">
           </div>
         </div>
+        <div class="settings-section">
+          <h4>数据备份与恢复</h4>
+          <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">一键导出全部文章 / 评论 / 设置为 JSON 文件；换设备或误删时可导入恢复（强烈建议定期备份，避免浏览器清空导致丢失）。</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="exportBackup()">⬇ 导出备份</button>
+            <label class="btn btn-secondary" style="cursor:pointer;">⬆ 导入备份<input type="file" id="backup-input" accept="application/json" style="display:none;" onchange="importBackup(this.files[0])"></label>
+          </div>
+        </div>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
         </div>
       `;
       document.getElementById("modal-overlay").classList.add("open");
+    }
+    function exportBackup() {
+      const keys = [STORAGE_KEY, BIO_KEY, TAGS_KEY, COMMENTS_KEY, VIEWS_KEY, LIKES_KEY, TRAFFIC_KEY, "guestbook", "hiddenSlugs", "extraTags", "zhuer_blog_liked", "theme", "tags-migrated-20260713"];
+      const data = {};
+      keys.forEach(k => { const v = localStorage.getItem(k); if (v !== null) data[k] = v; });
+      data.__meta = { site: "铸言", exportedAt: new Date().toISOString(), version: 1 };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `zhuyan-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      alert("备份已导出：" + a.download);
+    }
+    function importBackup(file) {
+      if (!file) return;
+      if (!confirm("导入备份将覆盖当前所有本地数据，确定继续？")) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          Object.keys(data).forEach(k => { if (k !== "__meta") localStorage.setItem(k, data[k]); });
+          alert("导入成功，页面将刷新以应用备份。");
+          location.reload();
+        } catch (err) {
+          alert("备份文件无效：" + err.message);
+        }
+      };
+      reader.readAsText(file);
     }
     function addTagFromInput() {
       const input = document.getElementById('tag-add-input');
@@ -5115,6 +5280,44 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       return raw;
     }
 
+    // 阅读时长估算：中文约 350 字/分钟
+    function readingTime(content) {
+      const text = (content || "")
+        .replace(IMG_RE, " ")
+        .replace(/[#>*_`~\[\]()!]/g, " ")
+        .replace(/\s+/g, "");
+      return Math.max(1, Math.round(text.length / 350));
+    }
+
+    // 系列聚合：静态 SERIES_DEFS + 文章自带 series 字段
+    function getAllSeries() {
+      const all = getAllPosts();
+      const list = [];
+      SERIES_DEFS.forEach(def => {
+        const posts = all.filter(def.match);
+        if (posts.length) list.push({ name: def.name, desc: def.desc, posts });
+      });
+      const grouped = {};
+      all.forEach(p => {
+        if (!p.series) return;
+        const names = Array.isArray(p.series)
+          ? p.series
+          : String(p.series).split(/[,，、]/).map(s => s.trim()).filter(Boolean);
+        names.forEach(n => { (grouped[n] = grouped[n] || []).push(p); });
+      });
+      Object.keys(grouped).sort().forEach(n => {
+        list.push({ name: n, desc: `「${n}」系列合集`, posts: grouped[n] });
+      });
+      return list;
+    }
+    function getSeriesIndex(name) {
+      return getAllSeries().findIndex(s => s.name === name);
+    }
+    function navigateSeries(name) {
+      const i = getSeriesIndex(name);
+      if (i >= 0) navigate("series-detail", i);
+    }
+
     // ===== 筛选状态 =====
     let currentFilter = { category: null, tag: null };
     let filterOpen = false;
@@ -5141,7 +5344,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           p.tags.some(t => t.toLowerCase().includes(q))
         );
       }
-      return posts.sort((a, b) => sortMode === "desc" ? (a.date < b.date ? 1 : -1) : (a.date > b.date ? 1 : -1));
+      return posts.sort((a, b) => {
+        const pa = a.pinned ? 1 : 0, pb = b.pinned ? 1 : 0;
+        if (pa !== pb) return pb - pa; // 精选置顶
+        return sortMode === "desc" ? (a.date < b.date ? 1 : -1) : (a.date > b.date ? 1 : -1);
+      });
     }
 
     function getAvailableTags(category) {
@@ -5428,14 +5635,18 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <span>·</span>
             ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
             <span>${post.tags.length} 个标签</span>
+            ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
+            ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
             ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
           </div>
           <h3>${highlight(post.title, currentSearch)}</h3>
+          <div class="reading-time">⏱ 约 ${readingTime(post.content)} 分钟读完</div>
           ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
           <p class="excerpt">${displayExcerpt(post)}</p>
           <div class="post-tags">
             ${post.tags.map(t => `<span class="post-tag" onclick="event.stopPropagation();currentFilter.tag='${t}';filterOpen=true;navigate('home');">#${t}</span>`).join("")}
           </div>
+          ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
         </div>
       `).join("") + (posts.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
 
@@ -5455,33 +5666,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const liked = isLiked(slug);
       const comments = getComments(slug);
 
-      app.innerHTML = `
-        <div class="post-detail page-enter">
-          <span class="back-link" onclick="goBack()">← 返回</span>
-          ${isAdmin ? `<div style="margin:8px 0;"><button class="post-edit-btn" onclick="openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="deletePost('${post.slug}')">删除</button></div>` : ""}
-          <h1>${post.title}</h1>
-          <div class="post-meta">
-            <time>${formatDate(post.date)}</time>
-            ${post.updatedAt ? `<span style="color:var(--fg-light);font-size:13px;">（修改于 ${formatDate(post.updatedAt)}）</span>` : ""}
-            <span>·</span>
-            <span style="color:var(--fg-light);font-size:13px;">${views} 次阅读</span>
-            <span>·</span>
-            <div class="post-tags">
-              ${post.category ? `<span class="post-tag" style="background:var(--accent);color:#fff;" onclick="navigate('category','${encodeURIComponent(post.category)}')">${post.category}</span>` : ""}
-              ${post.tags.map(t => `<span class="post-tag" onclick="navigate('tag','${t}')">#${t}</span>`).join("")}
-            </div>
-          </div>
-          <div class="markdown">${renderMarkdown(post.content)}</div>
-
-          <div class="post-stats">
-            <button class="like-btn ${liked ? 'liked' : ''}" id="like-btn" onclick="toggleLike('${post.slug}')">
-              <span class="heart">${liked ? '♥' : '♡'}</span>
-              <span class="like-count">${likes}</span>
-            </button>
-            <span class="stat-item"><span class="icon">👁</span> ${views}</span>
-            <span class="stat-item"><span class="icon">💬</span> ${comments.length}</span>
-          </div>
-
+      // 评论区块：启用 giscus 则用 GitHub 真评论，否则用本地评论
+      let commentBlock;
+      if (GISCUS_CONFIG.enabled) {
+        commentBlock = `<div id="giscus-host"></div>`;
+      } else {
+        commentBlock = `
           <div class="comment-section">
             <h3>评论 (${comments.length})</h3>
             <div class="comment-list" id="comment-list">
@@ -5499,7 +5689,43 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               <textarea id="comment-text" placeholder="写下你的评论..." maxlength="500"></textarea>
               <button class="btn btn-primary" onclick="submitComment('${post.slug}')">发表评论</button>
             </div>
+          </div>`;
+      }
+
+      app.innerHTML = `
+        <div class="post-detail page-enter">
+          <span class="back-link" onclick="goBack()">← 返回</span>
+          ${isAdmin ? `<div style="margin:8px 0;"><button class="post-edit-btn" onclick="openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="deletePost('${post.slug}')">删除</button></div>` : ""}
+          <h1>${post.title}</h1>
+          <div class="post-meta">
+            <time>${formatDate(post.date)}</time>
+            ${post.updatedAt ? `<span style="color:var(--fg-light);font-size:13px;">（修改于 ${formatDate(post.updatedAt)}）</span>` : ""}
+            <span>·</span>
+            <span style="color:var(--fg-light);font-size:13px;">${views} 次阅读</span>
+            <span>·</span>
+            <div class="post-tags">
+              ${post.category ? `<span class="post-tag" style="background:var(--accent);color:#fff;" onclick="navigate('category','${encodeURIComponent(post.category)}')">${post.category}</span>` : ""}
+              ${post.tags.map(t => `<span class="post-tag" onclick="navigate('tag','${t}')">#${t}</span>`).join("")}
+            </div>
           </div>
+          <div class="post-meta-sub">
+            ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
+            ${post.draft ? `<span class="draft-badge">草稿</span>` : ""}
+            <span class="reading-time-inline">⏱ 约 ${readingTime(post.content)} 分钟读完</span>
+            ${post.series && post.series.length ? `<span class="series-line">系列：${post.series.map(s => `<span class="post-tag series-tag" onclick="navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</span>` : ""}
+          </div>
+          <div class="markdown">${renderMarkdown(post.content)}</div>
+
+          <div class="post-stats">
+            <button class="like-btn ${liked ? 'liked' : ''}" id="like-btn" onclick="toggleLike('${post.slug}')">
+              <span class="heart">${liked ? '♥' : '♡'}</span>
+              <span class="like-count">${likes}</span>
+            </button>
+            <span class="stat-item"><span class="icon">👁</span> ${views}</span>
+            <span class="stat-item"><span class="icon">💬</span> ${comments.length}</span>
+          </div>
+
+          ${commentBlock}
 
           <div class="divider"><span>· · ·</span></div>
           <div style="text-align:center;">
@@ -5507,6 +5733,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
         </div>
       `;
+      if (GISCUS_CONFIG.enabled) loadGiscus(post.title);
     }
 
     function submitComment(slug) {
@@ -5646,11 +5873,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     function renderSeries() {
       const app = document.getElementById("app");
-      const allPosts = getAllPosts();
-
-      const seriesCards = SERIES_DEFS.map((def, idx) => {
-        const posts = allPosts.filter(def.match);
-        if (posts.length === 0) return "";
+      const list = getAllSeries();
+      const seriesCards = list.map((s, idx) => {
+        const posts = s.posts;
         return `
           <div class="post-card reveal" style="cursor:pointer;" onclick="navigate('series-detail','${idx}')">
             <div class="post-meta">
@@ -5658,12 +5883,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               <span>·</span>
               <span>${posts.length} 篇</span>
             </div>
-            <h3>${def.name}</h3>
-            <p class="excerpt">${def.desc}</p>
+            <h3>${s.name}</h3>
+            <p class="excerpt">${s.desc}</p>
             <div class="post-tags">${posts.slice(0,3).map(p => `<span class="post-tag">${p.title.length > 12 ? p.title.slice(0,12) + '…' : p.title}</span>`).join("")}${posts.length > 3 ? `<span class="post-tag">+${posts.length-3}</span>` : ''}</div>
           </div>
         `;
-      }).filter(Boolean).join("");
+      }).join("");
 
       app.innerHTML = `
         <header style="margin-bottom:40px;">
@@ -5677,10 +5902,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     function renderSeriesDetail(idx) {
       const app = document.getElementById("app");
-      const def = SERIES_DEFS[idx];
+      const def = getAllSeries()[idx];
       if (!def) { app.innerHTML = '<div class="loading">专题不存在</div>'; return; }
 
-      const posts = getAllPosts().filter(def.match).sort((a, b) => a.date < b.date ? 1 : -1);
+      const posts = def.posts.slice().sort((a, b) => a.date < b.date ? 1 : -1);
 
       app.innerHTML = `
         <div class="post-detail page-enter">
