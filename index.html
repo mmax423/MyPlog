@@ -5242,6 +5242,19 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <label class="btn btn-secondary" style="cursor:pointer;">⬆ 导入备份<input type="file" id="backup-input" accept="application/json" style="display:none;" onchange="importBackup(this.files[0])"></label>
           </div>
         </div>
+        <div class="settings-section">
+          <h4>天气动效测试</h4>
+          <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">手动切换天气动效用于测试，会覆盖真实天气；选「自动」恢复跟随当下真实天气。</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="setWeatherManual('auto')">自动</button>
+            <button class="btn btn-secondary" onclick="setWeatherManual('off')">关</button>
+            <button class="btn btn-secondary" onclick="setWeatherManual('rain')">雨</button>
+            <button class="btn btn-secondary" onclick="setWeatherManual('snow')">雪</button>
+            <button class="btn btn-secondary" onclick="setWeatherManual('fog')">雾</button>
+            <button class="btn btn-secondary" onclick="setWeatherManual('stars')">星空</button>
+            <button class="btn btn-secondary" onclick="setWeatherManual('sun')">晴</button>
+          </div>
+        </div>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
         </div>
@@ -6338,6 +6351,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const isDark = document.body.classList.contains("dark");
       localStorage.setItem("theme", isDark ? "dark" : "light");
       document.getElementById("theme-btn").textContent = isDark ? "●" : "○";
+      if (typeof Weather !== "undefined") Weather.syncToTheme();
+    }
+
+    // 设置页天气测试按钮：手动覆盖真实天气；"auto" 恢复跟随
+    function setWeatherManual(m) {
+      if (m === "auto") { localStorage.removeItem("weather-manual"); if (typeof Weather !== "undefined") Weather.syncToTheme(); return; }
+      localStorage.setItem("weather-manual", m);
+      if (typeof Weather !== "undefined") Weather.setMode(m, "测试 · " + ({ off:"关", rain:"雨", snow:"雪", fog:"雾", stars:"星空", sun:"晴" })[m] || m);
     }
 
     // ===== Header 滚动效果 =====
@@ -6482,14 +6503,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         particles = [];
         const W = window.innerWidth, H = window.innerHeight;
         if (mode === "rain") {
-          // 细而轻的雨丝（1px），靠冷色滤镜在日间也清晰
+          // 最开始那种细柔小雨：1px 细丝、低透明度，日间靠冷色滤镜显形
           const n = Math.floor(W / 6);
           for (let i = 0; i < n; i++) {
             particles.push({
               x: Math.random() * W, y: Math.random() * H,
-              len: 7 + Math.random() * 11,
-              speed: 4 + Math.random() * 5,
-              o: 0.22 + Math.random() * 0.33
+              len: 8 + Math.random() * 14,
+              speed: 4 + Math.random() * 6,
+              o: 0.16 + Math.random() * 0.30
             });
           }
         } else if (mode === "snow") {
@@ -6684,15 +6705,33 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         );
       }
 
+      function manualLabel(m) {
+        return ({ off:"关", rain:"雨", snow:"雪", fog:"雾", stars:"星空", sun:"晴" })[m] || m;
+      }
+
+      // 夜间模式自动开星空；手动覆盖优先
+      function syncToTheme() {
+        if (localStorage.getItem("weather-manual")) return;
+        if (document.body.classList.contains("dark")) setMode("stars", "夜间模式 · 星空");
+        else autoWeather();
+      }
+
       function init() {
         resize();
         window.addEventListener("resize", () => {
           if (["rain","stars","sun","snow","fog"].includes(mode)) { resize(); buildParticles(); }
         });
-        autoWeather();
+        const manual = localStorage.getItem("weather-manual");
+        if (manual) {
+          setMode(manual, "测试 · " + manualLabel(manual));
+        } else if (document.body.classList.contains("dark")) {
+          setMode("stars", "夜间模式 · 星空");
+        } else {
+          autoWeather();
+        }
       }
 
-      return { init, setMode };
+      return { init, setMode, auto: autoWeather, syncToTheme };
     })();
 
     // ===== 初始化 =====
