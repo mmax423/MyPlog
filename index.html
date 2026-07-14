@@ -1404,7 +1404,8 @@
       background: linear-gradient(180deg, rgba(64,84,116,.12) 0%, rgba(54,74,104,.07) 100%);
       mix-blend-mode: multiply;
     }
-    .weather-rain #weather-tint { opacity: 1; }
+    .weather-rain #weather-tint,
+    .weather-snow #weather-tint { opacity: 1; }
 
     /* 星空：深色夜空渐变（仅星空模式显示） */
     #weather-sky {
@@ -6481,13 +6482,39 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         particles = [];
         const W = window.innerWidth, H = window.innerHeight;
         if (mode === "rain") {
-          const n = Math.floor(W / 5);
+          // 细而轻的雨丝（1px），靠冷色滤镜在日间也清晰
+          const n = Math.floor(W / 6);
           for (let i = 0; i < n; i++) {
             particles.push({
               x: Math.random() * W, y: Math.random() * H,
-              len: 10 + Math.random() * 16,
-              speed: 5 + Math.random() * 7,
-              o: 0.35 + Math.random() * 0.4
+              len: 7 + Math.random() * 11,
+              speed: 4 + Math.random() * 5,
+              o: 0.22 + Math.random() * 0.33
+            });
+          }
+        } else if (mode === "snow") {
+          // 雪花：稀疏、缓慢飘落、左右轻摆
+          const n = Math.floor(W / 14);
+          for (let i = 0; i < n; i++) {
+            particles.push({
+              x: Math.random() * W, y: Math.random() * H,
+              r: 1 + Math.random() * 2.4,
+              vy: 0.4 + Math.random() * 0.9,
+              sway: Math.random() * Math.PI * 2,
+              swSp: 0.005 + Math.random() * 0.015,
+              swAmp: 0.3 + Math.random() * 0.6,
+              o: 0.55 + Math.random() * 0.45
+            });
+          }
+        } else if (mode === "fog") {
+          // 雾：几团大而柔的光斑缓慢横向漂移
+          const n = 7;
+          for (let i = 0; i < n; i++) {
+            particles.push({
+              x: Math.random() * W, y: H * (0.32 + Math.random() * 0.6),
+              r: 180 + Math.random() * 220,
+              vx: (0.2 + Math.random() * 0.5) * (Math.random() < 0.5 ? -1 : 1),
+              o: 0.10 + Math.random() * 0.10
             });
           }
         } else if (mode === "stars") {
@@ -6520,19 +6547,44 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         const W = window.innerWidth, H = window.innerHeight;
         ctx.clearRect(0, 0, W, H);
         if (mode === "rain") {
-          ctx.strokeStyle = isDark() ? "rgba(200,216,240,1)" : "rgba(72,92,124,1)";
-          ctx.lineWidth = 1.4;
+          ctx.strokeStyle = isDark() ? "rgba(200,216,240,1)" : "rgba(108,128,160,1)";
+          ctx.lineWidth = 1;
           ctx.lineCap = "round";
           for (const p of particles) {
             ctx.globalAlpha = p.o;
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x - 1.6, p.y + p.len);
+            ctx.lineTo(p.x - 1.4, p.y + p.len);
             ctx.stroke();
-            p.y += p.speed; p.x -= 0.4;
+            p.y += p.speed; p.x -= 0.35;
             if (p.y > H) { p.y = -p.len; p.x = Math.random() * W; }
           }
           ctx.globalAlpha = 1;
+        } else if (mode === "snow") {
+          for (const s of particles) {
+            s.sway += s.swSp; s.y += s.vy; s.x += Math.sin(s.sway) * s.swAmp;
+            if (s.y > H + 6) { s.y = -6; s.x = Math.random() * W; }
+            if (s.x < -6) s.x = W + 6; else if (s.x > W + 6) s.x = -6;
+            ctx.globalAlpha = s.o;
+            if (!isDark()) { ctx.shadowColor = "rgba(70,90,120,.5)"; ctx.shadowBlur = 4; }
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = isDark() ? "rgba(235,242,255,1)" : "rgba(255,255,255,1)";
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+          ctx.globalAlpha = 1;
+        } else if (mode === "fog") {
+          for (const f of particles) {
+            f.x += f.vx;
+            if (f.x > W + f.r) f.x = -f.r; else if (f.x < -f.r) f.x = W + f.r;
+            const col = isDark() ? "205,215,235" : "255,255,255";
+            const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+            g.addColorStop(0, `rgba(${col},${f.o})`);
+            g.addColorStop(1, `rgba(${col},0)`);
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+          }
         } else if (mode === "stars") {
           for (const s of particles) {
             s.ph += 0.02 * s.sp;
@@ -6571,13 +6623,15 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         mode = m;
         root.className = "weather-" + m;
         stop();
-        if (m === "rain" || m === "stars" || m === "sun") {
+        if (["rain","stars","sun","snow","fog"].includes(m)) {
           resize(); buildParticles(); frame();
         }
         const dot = statusEl.querySelector(".ws-dot");
         const info = {
           off:   ["#bbb", "天气动效关"],
           rain:  ["#6b8cae", "当下 · 雨"],
+          snow:  ["#dfe7f5", "当下 · 雪"],
+          fog:   ["#cfd6e0", "当下 · 雾"],
           stars: ["#9fb4ff", "当下 · 星空"],
           sun:   ["#f6c453", "当下 · 晴"]
         }[m] || ["#bbb", "天气动效关"];
@@ -6604,9 +6658,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
       function weatherMode(code, isDay) {
         if (code <= 3) return isDay ? "sun" : "stars";          // 晴/少云/阴 → 晴或星
-        if (code >= 45 && code <= 48) return "rain";            // 雾 → 雨幕氛围
-        if ([71,73,75,77,85,86].includes(code)) return isDay ? "sun" : "stars"; // 雪暂无专属，用晴/星底
-        return "rain";                                          // 其余均为降水
+        if (code === 45 || code === 48) return "fog";           // 雾 → 雾气动效
+        if ([71,73,75,77,85,86].includes(code)) return "snow";  // 雪 → 飘雪动效
+        return "rain";                                          // 其余（雨/阵雨/毛毛雨/雷阵雨）均为雨幕
       }
 
       // 真实天气：每次访问请求定位授权 → open-meteo（免费、无需 key、支持 CORS）
@@ -6633,7 +6687,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       function init() {
         resize();
         window.addEventListener("resize", () => {
-          if (mode === "rain" || mode === "stars" || mode === "sun") { resize(); buildParticles(); }
+          if (["rain","stars","sun","snow","fog"].includes(mode)) { resize(); buildParticles(); }
         });
         autoWeather();
       }
