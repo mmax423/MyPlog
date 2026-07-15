@@ -5029,6 +5029,114 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       host.appendChild(s);
     }
 
+    // ===== 后端适配器（可插拔：LeanCloud / 本地回退）=====
+    // 未填 appId 时自动回退到 localStorage，站点照常工作；填好后即变为共享后端。
+    const BACKEND_CONFIG = {
+      provider: "leancloud",
+      appId: "",          // ← 填你的 LeanCloud App ID
+      appKey: "",         // ← 填你的 LeanCloud App Key
+      serverURL: ""       // ← 填你的 LeanCloud 服务域名（CN 账号形如 https://xxxx.api.lncldapi.com）
+    };
+    let LC = null; // AV 命名空间
+    (function loadLeanCloud() {
+      if (!BACKEND_CONFIG.appId) return; // 未配置 → 用本地
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/leancloud-storage@4/dist/av-min.js";
+      s.onload = () => {
+        try {
+          LC = window.AV;
+          LC.init({ appId: BACKEND_CONFIG.appId, appKey: BACKEND_CONFIG.appKey, serverURL: BACKEND_CONFIG.serverURL });
+          // 已有登录会话则恢复管理员态
+          const u = LC.User.current();
+          if (u && u.get("isAdmin") === true) { isAdmin = true; localStorage.setItem(AUTH_KEY, "true"); updateAdminUI(); }
+        } catch (e) { LC = null; }
+      };
+      s.onerror = () => { LC = null; };
+      document.head.appendChild(s);
+    })();
+
+    const Backend = {
+      get ready() { return !!LC; },
+      deviceId() {
+        let id = localStorage.getItem("zhuer_device_id");
+        if (!id) { id = "d_" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("zhuer_device_id", id); }
+        return id;
+      },
+      async trackView(slug) {
+        if (!LC) { incrementViews(slug); return; }
+        try {
+          const q = new LC.Query("PostStat"); q.equalTo("slug", slug);
+          let o = await q.first();
+          if (!o) { o = new LC.Object("PostStat"); o.set("slug", slug); o.set("views", 0); }
+          o.increment("views", 1); await o.save();
+          const gq = new LC.Query("SiteStat"); gq.equalTo("key", "global");
+          let g = await gq.first();
+          if (!g) { g = new LC.Object("SiteStat"); g.set("key", "global"); g.set("visits", 0); }
+          g.increment("visits", 1); await g.save();
+        } catch (e) {}
+      },
+      async getViews(slug) {
+        if (!LC) return getViews(slug);
+        try { const q = new LC.Query("PostStat"); q.equalTo("slug", slug); const o = await q.first(); return o ? (o.get("views") || 0) : 0; }
+        catch (e) { return getViews(slug); }
+      },
+      async getSiteViews() {
+        if (!LC) return null;
+        try { const q = new LC.Query("SiteStat"); q.equalTo("key", "global"); const o = await q.first(); return o ? (o.get("visits") || 0) : null; }
+        catch (e) { return null; }
+      },
+      async getLikes(slug) {
+        if (!LC) return getLikes(slug);
+        try { const q = new LC.Query("Like"); q.equalTo("slug", slug); return await q.count(); }
+        catch (e) { return getLikes(slug); }
+      },
+      async isLiked(slug) {
+        if (!LC) return isLiked(slug);
+        try { const q = new LC.Query("Like"); q.equalTo("slug", slug); q.equalTo("deviceId", this.deviceId()); return !!(await q.first()); }
+        catch (e) { return isLiked(slug); }
+      },
+      async toggleLike(slug) {
+        if (!LC) { localToggleLike(slug); return getLikes(slug); }
+        try {
+          const q = new LC.Query("Like"); q.equalTo("slug", slug); q.equalTo("deviceId", this.deviceId());
+          const existing = await q.first();
+          if (existing) { await existing.destroy(); } else { const o = new LC.Object("Like"); o.set("slug", slug); o.set("deviceId", this.deviceId()); await o.save(); }
+          return await this.getLikes(slug);
+        } catch (e) { localToggleLike(slug); return getLikes(slug); }
+      },
+      async getComments(slug) {
+        if (!LC) return getCommentsLocal(slug);
+        try {
+          const q = new LC.Query("Comment"); q.equalTo("slug", slug); q.descending("createdAt");
+          const list = await q.find();
+          return list.map(o => ({ id: o.id, name: o.get("name") || "匿名", text: o.get("text"), time: (o.get("createdAt") || new Date()).toISOString() }));
+        } catch (e) { return getCommentsLocal(slug); }
+      },
+      async addComment(slug, name, text) {
+        if (!LC) { addCommentLocal(slug, name, text); return; }
+        try { const o = new LC.Object("Comment"); o.set("slug", slug); o.set("name", name || "匿名"); o.set("text", text); await o.save(); } catch (e) { addCommentLocal(slug, name, text); }
+      },
+      async deleteComment(slug, id) {
+        if (!LC) {
+          if (typeof id === "string" && id.indexOf("local_") === 0) deleteCommentLocal(slug, parseInt(id.slice(6), 10));
+          return;
+        }
+        try { const o = LC.Object.createWithoutData("Comment", id); await o.destroy(); } catch (e) {}
+      },
+      async login(username, password) {
+        if (!LC) { if (password === ADMIN_PASSWORD) { isAdmin = true; localStorage.setItem(AUTH_KEY, "true"); return true; } return false; }
+        try { await LC.User.logIn(username, password); return true; } catch (e) { return false; }
+      },
+      async logout() {
+        if (LC) { try { await LC.User.logOut(); } catch (e) {} }
+        isAdmin = false; localStorage.removeItem(AUTH_KEY);
+      },
+      isAdminUser() {
+        if (LC) { const u = LC.User.current(); return !!(u && u.get("isAdmin") === true); }
+        return isAdmin;
+      }
+    };
+
     let isAdmin = localStorage.getItem(AUTH_KEY) === "true";
     let sortMode = "desc"; // desc = 倒序, asc = 正序
 
@@ -5136,8 +5244,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     function toggleAdmin() {
       if (isAdmin) {
-        isAdmin = false;
-        localStorage.removeItem(AUTH_KEY);
+        Backend.logout();
         updateAdminUI();
         handleRoute();
       } else {
@@ -5150,6 +5257,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       modal.innerHTML = `
         <h2>管理员登录</h2>
         <div class="field">
+          <label>账号</label>
+          <input type="text" id="login-user" placeholder="管理员账号" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <div class="field">
           <label>密码</label>
           <input type="password" id="login-pwd" placeholder="输入管理密码" onkeydown="if(event.key==='Enter')doLogin()">
         </div>
@@ -5159,24 +5270,25 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         </div>
       `;
       document.getElementById("modal-overlay").classList.add("open");
-      setTimeout(() => document.getElementById("login-pwd").focus(), 300);
+      setTimeout(() => { const u = document.getElementById("login-user"); if (u) u.focus(); }, 300);
     }
 
     function doLogin() {
+      const user = (document.getElementById("login-user").value || "").trim();
       const pwd = document.getElementById("login-pwd").value;
-      if (pwd === ADMIN_PASSWORD) {
-        isAdmin = true;
-        localStorage.setItem(AUTH_KEY, "true");
-        closeModal();
-        updateAdminUI();
-        // 登录后提示可用的管理功能
-        handleRoute();
-      } else {
-        const input = document.getElementById("login-pwd");
-        input.style.borderColor = "#c53030";
-        input.value = "";
-        input.placeholder = "密码错误，请重试";
-      }
+      Backend.login(user, pwd).then(ok => {
+        if (ok) {
+          isAdmin = Backend.isAdminUser();
+          closeModal();
+          updateAdminUI();
+          handleRoute();
+        } else {
+          const input = document.getElementById("login-pwd");
+          input.style.borderColor = "#c53030";
+          input.value = "";
+          input.placeholder = Backend.ready ? "账号或密码错误，请重试" : "密码错误，请重试";
+        }
+      });
     }
 
     function updateAdminUI() {
@@ -5465,7 +5577,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const liked = JSON.parse(localStorage.getItem("zhuer_blog_liked") || "[]");
       return liked.includes(slug);
     }
-    function toggleLike(slug) {
+    function localToggleLike(slug) {
       const likes = JSON.parse(localStorage.getItem(LIKES_KEY) || "{}");
       const liked = JSON.parse(localStorage.getItem("zhuer_blog_liked") || "[]");
       if (liked.includes(slug)) {
@@ -5483,6 +5595,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         btn.classList.toggle('liked', liked.includes(slug));
         btn.querySelector('.like-count').textContent = likes[slug] || 0;
       }
+    }
+
+    // UI 层点赞：统一走 Backend（本地/LeanCloud 自动切换）
+    function toggleLike(slug) {
+      Backend.toggleLike(slug).then(count => {
+        Backend.isLiked(slug).then(liked => {
+          const btn = document.getElementById('like-btn');
+          if (btn) { btn.classList.toggle('liked', liked); btn.querySelector('.like-count').textContent = count; }
+        });
+      });
     }
 
     // ===== 分享文章 =====
@@ -5528,17 +5650,17 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     // ===== 评论 =====
-    function getComments(slug) {
+    function getCommentsLocal(slug) {
       const comments = JSON.parse(localStorage.getItem(COMMENTS_KEY) || "{}");
-      return comments[slug] || [];
+      return (comments[slug] || []).map((c, i) => Object.assign({ id: "local_" + i }, c));
     }
-    function addComment(slug, name, text) {
+    function addCommentLocal(slug, name, text) {
       const comments = JSON.parse(localStorage.getItem(COMMENTS_KEY) || "{}");
       if (!comments[slug]) comments[slug] = [];
       comments[slug].push({ name: name || "匿名", text, time: new Date().toISOString() });
       localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments));
     }
-    function deleteComment(slug, idx) {
+    function deleteCommentLocal(slug, idx) {
       const comments = JSON.parse(localStorage.getItem(COMMENTS_KEY) || "{}");
       if (comments[slug]) {
         comments[slug].splice(idx, 1);
@@ -6236,12 +6358,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const post = getAllPosts().find(p => p.slug === slug);
       if (!post) { app.innerHTML = `<div class="loading">文章不存在</div>`; return; }
 
-      // 增加浏览量
-      incrementViews(slug);
+      // 增加浏览量（共享后端，本地回退）；初始用本地值即时显示，加载完异步校正
+      Backend.trackView(slug);
       const views = getViews(slug);
       const likes = getLikes(slug);
       const liked = isLiked(slug);
-      const comments = getComments(slug);
+      const comments = getCommentsLocal(slug);
 
       // 评论区块：启用 giscus 则用 GitHub 真评论，否则用本地评论
       let commentBlock;
@@ -6250,14 +6372,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       } else {
         commentBlock = `
           <div class="comment-section">
-            <h3>评论 (${comments.length})</h3>
+            <h3>评论 <span id="comment-count">${comments.length}</span></h3>
             <div class="comment-list" id="comment-list">
-              ${comments.map((c, i) => `
+              ${comments.map((c) => `
                 <div class="comment-item">
-                  <span class="c-name">${c.name}</span>
-                  <span class="c-time">${formatDate(c.time.slice(0,10))}</span>
-                  ${isAdmin ? `<span class="filter-clear" style="margin-left:8px;font-size:12px;cursor:pointer;" onclick="deleteComment('${post.slug}',${i});renderPost('${post.slug}');">删除</span>` : ''}
-                  <div class="c-text">${c.text}</div>
+                  <span class="c-name">${escapeHtml(c.name)}</span>
+                  <span class="c-time">${formatDate((c.time || '').slice(0,10))}</span>
+                  ${isAdmin ? `<span class="filter-clear" style="margin-left:8px;font-size:12px;cursor:pointer;" onclick="deleteComment('${post.slug}','${c.id}')">删除</span>` : ''}
+                  <div class="c-text">${escapeHtml(c.text)}</div>
                 </div>
               `).join('') || '<div style="color:var(--fg-light);font-size:14px;padding:8px 0;">还没有评论，来说点什么吧</div>'}
             </div>
@@ -6278,7 +6400,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <time>${formatDate(post.date)}</time>
             ${post.updatedAt ? `<span style="color:var(--fg-light);font-size:13px;">（修改于 ${formatDate(post.updatedAt)}）</span>` : ""}
             <span>·</span>
-            <span style="color:var(--fg-light);font-size:13px;">${views} 次阅读</span>
+            <span style="color:var(--fg-light);font-size:13px;" class="view-count">${views} 次阅读</span>
             <span>·</span>
             <div class="post-tags">
               ${post.category ? `<span class="post-tag" style="background:var(--accent);color:#fff;" onclick="navigate('category','${encodeURIComponent(post.category)}')">${post.category}</span>` : ""}
@@ -6298,7 +6420,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               <span class="heart">${liked ? '♥' : '♡'}</span>
               <span class="like-count">${likes}</span>
             </button>
-            <span class="stat-item"><span class="icon">👁</span> ${views}</span>
+            <span class="stat-item view-count"><span class="icon">👁</span> ${views}</span>
             <span class="stat-item"><span class="icon">💬</span> ${comments.length}</span>
             <button class="share-btn" onclick="sharePost('${post.slug}')">
               <span class="share-icon">↗</span> 分享
@@ -6315,6 +6437,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       `;
       if (GISCUS_CONFIG.enabled) loadGiscus(post.title);
 
+      // 异步加载共享的评论/点赞/浏览量（本地或 LeanCloud 自动切换）
+      loadPostInteractions(slug);
+
       // 阅读时持续保存续读进度（节流）
       let _lastSave = 0;
       _postScrollHandler = () => {
@@ -6326,12 +6451,41 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       window.addEventListener("scroll", _postScrollHandler, { passive: true });
     }
 
+    // 异步加载某篇文章的共享互动数据（评论/点赞/浏览量）
+    async function loadPostInteractions(slug) {
+      try {
+        const [views, likes, liked, comments] = await Promise.all([
+          Backend.getViews(slug), Backend.getLikes(slug), Backend.isLiked(slug), Backend.getComments(slug)
+        ]);
+        document.querySelectorAll('.view-count').forEach(el => el.textContent = views);
+        const lb = document.getElementById('like-btn');
+        if (lb) { lb.classList.toggle('liked', liked); lb.querySelector('.like-count').textContent = likes; }
+        const cl = document.getElementById('comment-list');
+        if (cl) {
+          cl.innerHTML = comments.map(c => `
+            <div class="comment-item">
+              <span class="c-name">${escapeHtml(c.name)}</span>
+              <span class="c-time">${formatDate((c.time || '').slice(0,10))}</span>
+              ${Backend.isAdminUser() ? `<span class="filter-clear" style="margin-left:8px;font-size:12px;cursor:pointer;" onclick="deleteComment('${slug}','${c.id}')">删除</span>` : ''}
+              <div class="c-text">${escapeHtml(c.text)}</div>
+            </div>`).join('') || '<div style="color:var(--fg-light);font-size:14px;padding:8px 0;">还没有评论，来说点什么吧</div>';
+        }
+        const cc = document.getElementById('comment-count');
+        if (cc) cc.textContent = comments.length;
+      } catch (e) {}
+    }
+
     function submitComment(slug) {
       const name = document.getElementById('comment-name').value.trim();
       const text = document.getElementById('comment-text').value.trim();
       if (!text) { alert('评论内容不能为空'); return; }
-      addComment(slug, name, text);
-      renderPost(slug);
+      Backend.addComment(slug, name, text).then(() => loadPostInteractions(slug));
+    }
+
+    // UI 层删除评论（本地/LeanCloud 自动切换）
+    async function deleteComment(slug, id) {
+      await Backend.deleteComment(slug, id);
+      loadPostInteractions(slug);
     }
 
     function renderCategories() {
@@ -6694,9 +6848,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
         <div class="divider"><span>· · ·</span></div>
 
-        <!-- 站点数据（本地浏览统计） -->
+        <!-- 站点数据（接入后端后显示全站真实访问量） -->
         <div class="about-stats" style="margin-top:32px;">
-          <div class="stat-card reveal"><div class="num">${traffic.visits || 0}</div><div class="label">本设备访问</div></div>
+          <div class="stat-card reveal"><div class="num" id="stat-site-visits">${traffic.visits || 0}</div><div class="label" id="stat-site-visits-label">本设备访问</div></div>
           <div class="stat-card reveal" style="transition-delay:0.1s"><div class="num">${totalViews}</div><div class="label">文章阅读量</div></div>
           <div class="stat-card reveal" style="transition-delay:0.2s"><div class="num">${pinnedCount}</div><div class="label">篇精选</div></div>
         </div>
@@ -6736,6 +6890,17 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
         ${isAdmin ? `<div style="margin-top:32px;text-align:center;"><button class="btn btn-secondary" style="padding:8px 20px;border:0.5px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:14px;color:var(--fg-muted);transition:var(--transition);background:transparent;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg-muted)'" onclick="editBio()">编辑简介</button></div>` : ""}
       `;
+
+      // 接入后端后，把"本设备访问"刷新为全站真实访问量
+      if (Backend.ready) {
+        Backend.getSiteViews().then(v => {
+          if (v == null) return;
+          const n = document.getElementById("stat-site-visits");
+          const l = document.getElementById("stat-site-visits-label");
+          if (n) n.textContent = v;
+          if (l) l.textContent = "全站访问";
+        });
+      }
     }
 
     // ===== 写作年表（时间线）=====
