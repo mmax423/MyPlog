@@ -1971,25 +1971,29 @@
       { text: "一名女子对着电话那头说:“现在做什么都没用了，结束了，完了，我今天晚上就离开镇子", title: "落日", date: "2026-02-02", slug: "article-c5fd5226aa68" },];
 
     // ===== 博客文章数据 =====
-    // 精选代表作 slug 列表（运行时可由管理员增删，存 localStorage 持久化）
-    let FEATURED_SLUGS = (function(){
-      try { return JSON.parse(localStorage.getItem("zhuyan-featured")) || [
-        "article-474d055d7a52",  // 全部写作总结
-        "article-b0c3a5872954",  // 落雨
-        "article-fe493f3c1f3f"   // 记忆与印象
-      ]; } catch(e) {
-        return ["article-474d055d7a52","article-b0c3a5872954","article-fe493f3c1f3f"];
-      }
+    // 精选 = 文章自身的 pinned 字段（单一数据源）。编辑器复选框与列表/卡片的
+    // 「★ 设为精选 / ✕ 取消精选」按钮都读写 post.pinned，互相同步。
+    // 启动时把旧版 FEATURED_SLUGS（localStorage）迁移进 pinned，保证历史精选不丢。
+    (function migrateFeaturedToPinned() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("zhuyan-featured") || "[]");
+        if (Array.isArray(saved) && saved.length) {
+          const slugs = new Set(saved);
+          POSTS.forEach(p => { if (slugs.has(p.slug)) p.pinned = true; });
+        }
+      } catch (e) {}
     })();
-    function saveFeatured() { localStorage.setItem("zhuyan-featured", JSON.stringify(FEATURED_SLUGS)); }
     function toggleFeatured(slug) {
-      const idx = FEATURED_SLUGS.indexOf(slug);
-      if (idx >= 0) { FEATURED_SLUGS.splice(idx, 1); }
-      else { FEATURED_SLUGS.push(slug); }
-      saveFeatured();
+      const post = getAllPosts().find(p => p.slug === slug);
+      if (!post) return;
+      post.pinned = !post.pinned;
+      saveUserPost(post); // 内置文章也以覆盖副本持久化，与 getAllPosts 合并逻辑一致
       renderPostList();
     }
-    function isFeatured(slug) { return FEATURED_SLUGS.includes(slug); }
+    function isFeatured(slug) {
+      const p = getAllPosts().find(x => x.slug === slug);
+      return !!(p && p.pinned);
+    }
 
     // 首页视图模式（列表 / 卡片网格）
     let viewMode = localStorage.getItem("zhuyan-viewMode") || "list";
@@ -5023,7 +5027,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function getAllPosts() {
       const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const hidden = getHiddenSlugs();
-      let all = [...userPosts, ...POSTS].filter(p => !hidden.includes(p.slug));
+      // 按 slug 合并：用户编辑/新增的覆盖内置原版（避免同一条出现两篇）
+      const map = new Map();
+      userPosts.forEach(p => map.set(p.slug, p));
+      POSTS.forEach(p => { if (!map.has(p.slug)) map.set(p.slug, p); });
+      let all = [...map.values()].filter(p => !hidden.includes(p.slug));
       if (!isAdmin) all = all.filter(p => !p.draft); // 草稿仅管理员可见
       return all;
     }
@@ -5371,7 +5379,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       clearAutosave(oldSlug || "new");
       stopAutosave();
       closeModal();
-      navigate("post", slug);
+      navigate("home", null, { replace: true });
       handleRoute();
     }
 
@@ -6079,12 +6087,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       if (viewMode === 'grid' && !currentSearch && !currentFilter.category && !currentFilter.tag) {
         const gridHTML = `<div class="post-grid">` +
           all.map((post, i) => `
-            <div class="featured-card reveal ${isFeatured(post.slug) ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
+            <div class="featured-card reveal ${post.pinned ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
               <div class="post-meta"><time>${formatDate(post.date)}</time><span>·</span>${post.category || "未分类"}<span>·</span><span>${post.tags.length} 个标签</span></div>
               <h3>${escapeHtml(post.title)}</h3>
               <p class="excerpt">${displayExcerpt(post)}</p>
               <div class="post-tags">${post.tags.slice(0,4).map(t => `<span class="post-tag">#${t}</span>`).join("")}${post.tags.length > 4 ? `<span class="post-tag">+${post.tags.length-4}</span>` : ""}</div>
-              ${isAdmin ? `<div style="margin-top:10px;"><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${isFeatured(post.slug) ? '✕ 取消精选' : '★ 设为精选'}</button></div>` : ""}
+              ${isAdmin ? `<div style="margin-top:10px;"><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${post.pinned ? '✕ 取消精选' : '★ 设为精选'}</button></div>` : ""}
             </div>
           `).join("") + `</div>` +
           (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
@@ -6101,7 +6109,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <span>·</span>
             ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
             <span>${post.tags.length} 个标签</span>
-            ${isFeatured(post.slug) ? `<span class="pin-badge">★ 精选</span>` : ""}
+            ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
             ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
             ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${isFeatured(post.slug) ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
           </div>
