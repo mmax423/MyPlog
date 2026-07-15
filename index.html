@@ -5870,6 +5870,26 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       return true;
     }
 
+    // ===== 文章续读进度（持久化，按 slug 保存上次阅读到的滚动位置）=====
+    function saveReadingProgress(slug, y) {
+      try {
+        const docH = document.documentElement.scrollHeight - window.innerHeight;
+        // 接近底部视为已读完，不再续读（下次从头开始）
+        const finished = docH > 0 && y >= docH - 40;
+        if (finished) { localStorage.removeItem("read_" + slug); return; }
+        localStorage.setItem("read_" + slug, JSON.stringify({ y: Math.max(0, Math.round(y)), t: Date.now() }));
+      } catch (e) {}
+    }
+    function getReadingProgress(slug) {
+      try {
+        const raw = localStorage.getItem("read_" + slug);
+        if (!raw) return null;
+        const { y } = JSON.parse(raw);
+        return (typeof y === "number" && y > 0) ? y : null;
+      } catch (e) { return null; }
+    }
+    let _postScrollHandler = null;
+
     // 记录上一页，用于智能返回
     function getPrevRoute() {
       try { return JSON.parse(sessionStorage.getItem("routeHistory") || "[]"); } catch { return []; }
@@ -5893,6 +5913,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       // 离开当前页前保存滚动位置
       if (saveScroll && currentRoute === "home") saveScrollState("home");
       if (saveScroll && currentRoute === "tag") saveScrollState("tag_" + currentHash.split("/")[1]);
+      if (saveScroll && currentRoute === "post") {
+        const sp = currentHash.split("/")[1];
+        if (sp) saveReadingProgress(sp, window.scrollY);
+      }
 
       let h = route;
       if (param) h += "/" + encodeURIComponent(param);
@@ -5929,14 +5953,22 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const navEl = document.getElementById(navId);
       if (navEl) navEl.classList.add("active");
 
-      // 滚动位置管理：3分钟内返回恢复位置
+      // 滚动位置管理：3分钟内返回恢复位置（首页/标签）
       let restored = false;
       if (route === "home") {
         restored = restoreScrollState("home");
       } else if (route === "tag" && param) {
         restored = restoreScrollState("tag_" + param);
       }
-      if (!restored && route !== "post") {
+      if (route === "post" && param) {
+        // 续读：有保存的阅读进度则恢复到该位置；首次阅读（无进度）从头开始
+        const y = getReadingProgress(param);
+        if (y) {
+          setTimeout(() => window.scrollTo({ top: y, behavior: "instant" }), 0);
+        } else {
+          window.scrollTo(0, 0);
+        }
+      } else if (!restored) {
         window.scrollTo(0, 0);
       }
 
@@ -6198,6 +6230,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     function renderPost(slug) {
+      // 清理上篇文章可能残留的滚动监听
+      if (_postScrollHandler) { window.removeEventListener("scroll", _postScrollHandler); _postScrollHandler = null; }
       const app = document.getElementById("app");
       const post = getAllPosts().find(p => p.slug === slug);
       if (!post) { app.innerHTML = `<div class="loading">文章不存在</div>`; return; }
@@ -6280,6 +6314,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         </div>
       `;
       if (GISCUS_CONFIG.enabled) loadGiscus(post.title);
+
+      // 阅读时持续保存续读进度（节流）
+      let _lastSave = 0;
+      _postScrollHandler = () => {
+        const now = Date.now();
+        if (now - _lastSave < 600) return;
+        _lastSave = now;
+        saveReadingProgress(slug, window.scrollY);
+      };
+      window.addEventListener("scroll", _postScrollHandler, { passive: true });
     }
 
     function submitComment(slug) {
