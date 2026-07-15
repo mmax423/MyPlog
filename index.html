@@ -1983,6 +1983,27 @@
         }
       } catch (e) {}
     })();
+    // 启动时清理 localStorage 中的重复条目（防止旧版 bug 残留导致同 slug 多条）
+    (function cleanDuplicateStorage() {
+      try {
+        const key = STORAGE_KEY;
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return;
+        const seen = new Set();
+        const cleaned = arr.filter(p => {
+          if (!p || !p.slug) return false;
+          if (seen.has(p.slug)) return false;
+          seen.add(p.slug);
+          return true;
+        });
+        if (cleaned.length !== arr.length) {
+          localStorage.setItem(key, JSON.stringify(cleaned));
+          console.log(`cleaned ${arr.length - cleaned.length} duplicate(s) from storage`);
+        }
+      } catch(e) {}
+    })();
     function toggleFeatured(slug) {
       const post = getAllPosts().find(p => p.slug === slug);
       if (!post) return;
@@ -5032,6 +5053,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       userPosts.forEach(p => map.set(p.slug, p));
       POSTS.forEach(p => { if (!map.has(p.slug)) map.set(p.slug, p); });
       let all = [...map.values()].filter(p => !hidden.includes(p.slug));
+      // 防御性二次去重（防止 localStorage 出现同 slug 多条导致 Map 覆盖后仍有异常）
+      const seen = new Set();
+      all = all.filter(p => { if (seen.has(p.slug)) return false; seen.add(p.slug); return true; });
       if (!isAdmin) all = all.filter(p => !p.draft); // 草稿仅管理员可见
       return all;
     }
@@ -5765,7 +5789,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     // ===== 筛选状态 =====
-    let currentFilter = { category: null, tag: null };
+    let currentFilter = { category: null, tag: null, featured: false };
     let filterOpen = false;
     let currentSearch = "";
 
@@ -5779,6 +5803,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     function getFilteredPosts() {
       let posts = [...getAllPosts()];
+      if (currentFilter.featured) posts = posts.filter(p => p.pinned);
       if (currentFilter.category) posts = posts.filter(p => p.category === currentFilter.category);
       if (currentFilter.tag) posts = posts.filter(p => p.tags.some(t => t.toLowerCase() === currentFilter.tag.toLowerCase()));
       if (currentSearch) {
@@ -5954,6 +5979,20 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       filterHTML += `<div class="sort-btn ${sortMode === "asc" ? "active" : ""}" onclick="setSort('asc')">按时间正序</div>`;
       filterHTML += '</div>';
 
+      // 精选集入口
+      const pinnedCount = getAllPosts().filter(p => p.pinned).length;
+      if (pinnedCount > 0) {
+        filterHTML += '<div class="filter-section">';
+        filterHTML += '<div class="filter-label">专栏</div>';
+        filterHTML += '<div class="filter-chips">';
+        if (currentFilter.featured) {
+          filterHTML += `<div class="filter-chip active" onclick="setFilter('featured',false)">★ 精选集 ✕</div>`;
+        } else {
+          filterHTML += `<div class="filter-chip" onclick="setFilter('featured',true)" style="border-color:var(--accent);color:var(--accent);">★ 精选集 <span class="chip-count">${pinnedCount}</span></div>`;
+        }
+        filterHTML += '</div></div>';
+      }
+
       // 标签筛选（包含文体）
       if (tags.length > 0) {
         filterHTML += '<div class="filter-section">';
@@ -6024,11 +6063,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function setFilter(type, value) {
       if (type === "category") currentFilter.category = value;
       else if (type === "tag") currentFilter.tag = value;
+      else if (type === "featured") currentFilter.featured = value;
       renderHome();
     }
 
     function clearFilter() {
-      currentFilter = { category: null, tag: null };
+      currentFilter = { category: null, tag: null, featured: false };
       renderHome();
     }
 
@@ -6068,11 +6108,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       let info = "";
       if (currentSearch) {
         info = `<div class="filter-result-info">搜索「${escapeHtml(currentSearch)}」 · 共 ${all.length} 篇 <span class="filter-clear" onclick="clearSearch()">清除搜索</span></div>`;
-      } else if (currentFilter.category || currentFilter.tag) {
+      } else if (currentFilter.category || currentFilter.tag || currentFilter.featured) {
         let parts = [];
+        if (currentFilter.featured) parts.push("★ 精选集");
         if (currentFilter.category) parts.push(currentFilter.category);
         if (currentFilter.tag) parts.push("#" + currentFilter.tag);
-        info = `<div class="filter-result-info">筛选：${parts.join(" + ")} · 共 ${all.length} 篇 <span class="filter-clear" onclick="clearFilter()">全部清除</span></div>`;
+        info = `<div class="filter-result-info">筛选：${parts.join(" + ")} · 共 ${all.length} 篇 <span class="filter-clear" onclick="clearSearch();clearFilter()">全部清除</span></div>`;
       } else {
         info = `<div class="section-title">
           <h2>全部文章</h2><div class="line"></div><span class="count">${all.length} 篇</span>
@@ -6084,7 +6125,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
 
       // 卡片网格模式
-      if (viewMode === 'grid' && !currentSearch && !currentFilter.category && !currentFilter.tag) {
+      if (viewMode === 'grid' && !currentSearch && !currentFilter.category && !currentFilter.tag && !currentFilter.featured) {
         const gridHTML = `<div class="post-grid">` +
           all.map((post, i) => `
             <div class="featured-card reveal ${post.pinned ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
@@ -6102,11 +6143,40 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
 
       // 默认列表模式
-      container.innerHTML = info + all.map((post, i) => `
-        <div class="post-card reveal" style="transition-delay:${Math.min(i * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
+      // 在默认视图下（无筛选/搜索），精选置顶并与普通文章之间加分隔线
+      const isDefaultView = !currentSearch && !currentFilter.category && !currentFilter.tag && !currentFilter.featured;
+      const featuredPosts = isDefaultView ? all.filter(p => p.pinned) : [];
+      const regularPosts = isDefaultView ? all.filter(p => !p.pinned) : all;
+
+      let listHTML = "";
+      if (featuredPosts.length) {
+        listHTML += featuredPosts.map((post, i) => `
+          <div class="post-card reveal" style="transition-delay:${Math.min(i * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
+            <div class="post-meta">
+              <time>${formatDate(post.date)}</time><span>·</span>
+              ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
+              <span>${post.tags.length} 个标签</span>
+              ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
+              ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
+              ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${isFeatured(post.slug) ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
+            </div>
+            <h3>${highlight(post.title, currentSearch)}</h3>
+            ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
+            <p class="excerpt">${displayExcerpt(post)}</p>
+            <div class="post-tags">
+              ${post.tags.map(t => `<span class="post-tag" onclick="event.stopPropagation();currentFilter.tag='${t}';filterOpen=true;navigate('home');">#${t}</span>`).join("")}
+            </div>
+            ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
+          </div>
+        `).join("");
+        if (regularPosts.length) {
+          listHTML += `<div class="divider"><span>· · ·</span></div>`;
+        }
+      }
+      listHTML += regularPosts.map((post, i) => `
+        <div class="post-card reveal" style="transition-delay:${Math.min((featuredPosts.length + i) * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
           <div class="post-meta">
-            <time>${formatDate(post.date)}</time>
-            <span>·</span>
+            <time>${formatDate(post.date)}</time><span>·</span>
             ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
             <span>${post.tags.length} 个标签</span>
             ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
@@ -6121,7 +6191,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
           ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
         </div>
-      `).join("") + (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
+      `).join("");
+      container.innerHTML = info + listHTML + (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
 
       setTimeout(observeReveal, 30);
     }
@@ -6547,6 +6618,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     function renderAbout() {
       incrementTraffic();
+      const traffic = getTraffic();
+      const totalViews = getTotalViews();
       const app = document.getElementById("app");
       const tags = getAllTags();
       const categories = getAllCategories();
@@ -6561,6 +6634,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       if (firstDate && lastDate) {
         spanDays = Math.max(1, Math.round((new Date(lastDate) - new Date(firstDate)) / 86400000) + 1);
       }
+      const pinnedCount = allPosts.filter(p => p.pinned).length;
+
       app.innerHTML = `
         <header style="margin-bottom:48px;text-align:center;">
           <h1 style="font-family:var(--font-cursive);font-size:40px;font-weight:400;color:var(--fg);letter-spacing:6px;">关于</h1>
@@ -6572,6 +6647,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <div class="stat-card reveal" style="transition-delay:0.2s"><div class="num">${categories.length}</div><div class="label">种文体</div></div>
           <div class="stat-card reveal" style="transition-delay:0.3s"><div class="num">${spanDays}</div><div class="label">天创作跨度</div></div>
         </div>
+
+        <div class="divider"><span>· · ·</span></div>
+
+        <!-- 站点数据（本地浏览统计） -->
+        <div class="about-stats" style="margin-top:32px;">
+          <div class="stat-card reveal"><div class="num">${traffic.visits || 0}</div><div class="label">本设备访问</div></div>
+          <div class="stat-card reveal" style="transition-delay:0.1s"><div class="num">${totalViews}</div><div class="label">文章阅读量</div></div>
+          <div class="stat-card reveal" style="transition-delay:0.2s"><div class="num">${pinnedCount}</div><div class="label">篇精选</div></div>
+        </div>
+        <p style="text-align:center;font-size:12px;color:var(--fg-light);margin-top:8px;">↑ 浏览数据存储于本地（每台设备独立计数）。如需全局访问统计，可接入 Umami / 百度统计。</p>
 
         <div class="divider"><span>· · ·</span></div>
 
