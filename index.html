@@ -1583,7 +1583,7 @@
     .reading-time { font-size: 12px; color: var(--fg-light); margin: 6px 0 2px; }
     .post-meta-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 13px; color: var(--fg-light); }
     .reading-time-inline { font-size: 13px; color: var(--fg-light); }
-    .pin-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: linear-gradient(135deg,#f6d365,#fda085); color: #fff; font-size: 12px; font-weight: 600; }
+    .pin-badge { display: inline-block; padding: 0 8px; border-radius: 4px; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); border: 0.5px solid color-mix(in srgb, var(--accent) 20%, transparent); letter-spacing: 0.5px; vertical-align: middle; }
     .draft-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #888; color: #fff; font-size: 12px; }
     .series-tag { cursor: pointer; background: var(--tag-bg); }
     .series-tag:hover { background: var(--accent); color: #fff; }
@@ -6080,7 +6080,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         const gridHTML = `<div class="post-grid">` +
           all.map((post, i) => `
             <div class="featured-card reveal ${isFeatured(post.slug) ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
-              <div class="post-meta"><time>${formatDate(post.date)}</time><span>·</span>${post.category || "未分类"}<span>·</span><span>${post.tags.length} 个标签</span>${isFeatured(post.slug) ? '<span class="pin-badge">★ 精选</span>' : ''}</div>
+              <div class="post-meta"><time>${formatDate(post.date)}</time><span>·</span>${post.category || "未分类"}<span>·</span><span>${post.tags.length} 个标签</span></div>
               <h3>${escapeHtml(post.title)}</h3>
               <p class="excerpt">${displayExcerpt(post)}</p>
               <div class="post-tags">${post.tags.slice(0,4).map(t => `<span class="post-tag">#${t}</span>`).join("")}${post.tags.length > 4 ? `<span class="post-tag">+${post.tags.length-4}</span>` : ""}</div>
