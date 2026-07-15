@@ -11,11 +11,11 @@
   <meta property="og:description" content="一个会随天气落雨的文学博客——散文、小说、诗词与校园纪游。">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://mmax423.github.io/MyPlog/">
-  <meta property="og:image" content="https://mmax423.github.io/MyPlog/og-cover.png">
+  <meta property="og:image" content="https://mmax423.github.io/MyPlog/og-cover.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="铸言">
   <meta name="twitter:description" content="一个会随天气落雨的文学博客——散文、小说、诗词与校园纪游。">
-  <meta name="twitter:image" content="https://mmax423.github.io/MyPlog/og-cover.png">
+  <meta name="twitter:image" content="https://mmax423.github.io/MyPlog/og-cover.jpg">
   <!-- ===== RSS 订阅源 ===== -->
   <link rel="alternate" type="application/rss+xml" title="铸言 · RSS" href="rss.xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -133,13 +133,17 @@
       text-shadow: 0 0 20px var(--bg);
     }
     .float-quote.show {
-      opacity: 0.16;
+      opacity: 0.12;
     }
     body.dark .float-quote {
       color: #e7e5e4;
     }
     body.dark .float-quote.show {
-      opacity: 0.13;
+      opacity: 0.08;
+    }
+    @media (max-width: 768px) {
+      .float-quote.show { opacity: 0.06; }
+      body.dark .float-quote.show { opacity: 0.04; }
     }
     @keyframes quote-drift {
       0% { transform: translateY(20px) translateX(0); }
@@ -740,6 +744,79 @@
       color: var(--accent);
     }
 
+    /* ===== 精选代表作 / 视图切换 ===== */
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .view-btn {
+      padding: 5px 12px;
+      font-size: 13px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: var(--font-sans);
+    }
+    .view-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .view-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .post-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+    }
+    .featured-card {
+      border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+      border-radius: var(--radius);
+      padding: 20px 22px 22px;
+      cursor: pointer;
+      transition: var(--transition);
+      background: color-mix(in srgb, var(--accent) 4%, var(--bg, #ffffff));
+      position: relative;
+    }
+    .featured-card:hover {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 9%, var(--bg, #ffffff));
+      transform: translateY(-2px);
+      box-shadow: 0 10px 26px rgba(0,0,0,.08);
+    }
+    .featured-card h3 {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--fg);
+      margin: 8px 0 10px;
+      line-height: 1.5;
+      transition: var(--transition);
+    }
+    .featured-card:hover h3 { color: var(--accent); }
+    .featured-card .excerpt {
+      color: var(--fg-muted);
+      line-height: 1.8;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .featured-card .pin-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 8px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      border: 0.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
+      border-radius: 999px;
+      color: var(--accent);
+    }
+    .featured-card.is-featured {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 7%, var(--bg, #ffffff));
+    }
+    .featured-card.is-featured:hover {
+      box-shadow: 0 10px 26px rgba(154,107,180,.14);
+    }
+
     /* ===== Scroll Animation ===== */
     .reveal {
       opacity: 0;
@@ -961,7 +1038,7 @@
     /* ===== About Page ===== */
     .about-stats {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: 16px;
       margin-bottom: 40px;
     }
@@ -987,6 +1064,82 @@
       font-size: 13px;
       color: var(--fg-light);
       margin-top: 4px;
+    }
+
+    /* ===== 能力标签 / 价值主张 / 数字名片 ===== */
+    .cap-section { margin-top: 48px; }
+    .cap-title {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: 2px;
+      margin: 0 0 18px;
+      text-align: center;
+    }
+    .cap-tags {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .cap-tag {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      background: var(--bg-card);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      transition: var(--transition);
+    }
+    .cap-tag:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .cap-ico {
+      font-size: 22px;
+      color: var(--accent);
+      flex: 0 0 auto;
+      width: 30px;
+      text-align: center;
+    }
+    .cap-tag b { display: block; font-size: 15px; color: var(--fg); font-weight: 600; }
+    .cap-tag small { display: block; margin-top: 3px; font-size: 12px; color: var(--fg-light); }
+    .value-prop {
+      margin: 36px auto 0;
+      max-width: 560px;
+      text-align: center;
+      font-family: var(--font-serif);
+      font-size: 17px;
+      line-height: 1.9;
+      color: var(--accent);
+      padding: 22px 20px;
+      border-top: 0.5px solid var(--border);
+      border-bottom: 0.5px solid var(--border);
+    }
+    .contact-section { margin-top: 48px; }
+    .contact-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
+    .contact-link {
+      display: inline-block;
+      padding: 10px 20px;
+      border: 0.5px solid var(--border);
+      border-radius: 999px;
+      font-size: 14px;
+      color: var(--fg);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+    .contact-link:hover { border-color: var(--accent); color: var(--accent); }
+    .contact-link.disabled { color: var(--fg-light); cursor: default; border-style: dashed; }
+    .contact-link.disabled:hover { border-color: var(--border); color: var(--fg-light); }
+    .contact-note {
+      margin-top: 22px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--fg-light);
+      line-height: 1.8;
     }
 
     /* ===== Footer ===== */
@@ -1498,11 +1651,12 @@
       background: var(--bg-card); border: 1px solid var(--border);
       padding: 4px 11px; border-radius: 999px;
       box-shadow: 0 4px 18px rgba(0,0,0,.10);
-      pointer-events: none; opacity: 0; transition: opacity .6s;
+      pointer-events: auto; cursor: pointer; opacity: 0; transition: opacity .6s;
       font-family: var(--font-sans); backdrop-filter: blur(6px);
       display: flex; align-items: center; gap: 6px;
     }
     #weather-status.show { opacity: .92; }
+    #weather-status:hover { opacity: 1; border-color: var(--accent); }
     #weather-status .ws-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--fg-light); }
     .post-series { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
     .series-line { display: inline-flex; flex-wrap: wrap; gap: 6px; }
@@ -1543,7 +1697,7 @@
     <div id="weather-sun"></div>
   </div>
   <!-- 天气状态指示（只读） -->
-  <div id="weather-status"><span class="ws-dot"></span><span id="ws-text">天气加载中…</span></div>
+  <div id="weather-status" onclick="toggleWeather()" title="点击开关天气动效"><span class="ws-dot"></span><span id="ws-text">天气加载中…</span></div>
   <div class="layout">
     <header class="header" id="header">
       <div class="header-inner">
@@ -1817,6 +1971,33 @@
       { text: "一名女子对着电话那头说:“现在做什么都没用了，结束了，完了，我今天晚上就离开镇子", title: "落日", date: "2026-02-02", slug: "article-c5fd5226aa68" },];
 
     // ===== 博客文章数据 =====
+    // 精选代表作 slug 列表（运行时可由管理员增删，存 localStorage 持久化）
+    let FEATURED_SLUGS = (function(){
+      try { return JSON.parse(localStorage.getItem("zhuyan-featured")) || [
+        "article-474d055d7a52",  // 全部写作总结
+        "article-b0c3a5872954",  // 落雨
+        "article-fe493f3c1f3f"   // 记忆与印象
+      ]; } catch(e) {
+        return ["article-474d055d7a52","article-b0c3a5872954","article-fe493f3c1f3f"];
+      }
+    })();
+    function saveFeatured() { localStorage.setItem("zhuyan-featured", JSON.stringify(FEATURED_SLUGS)); }
+    function toggleFeatured(slug) {
+      const idx = FEATURED_SLUGS.indexOf(slug);
+      if (idx >= 0) { FEATURED_SLUGS.splice(idx, 1); }
+      else { FEATURED_SLUGS.push(slug); }
+      saveFeatured();
+      renderPostList();
+    }
+    function isFeatured(slug) { return FEATURED_SLUGS.includes(slug); }
+
+    // 首页视图模式（列表 / 卡片网格）
+    let viewMode = localStorage.getItem("zhuyan-viewMode") || "list";
+    function setViewMode(m) {
+      viewMode = m;
+      localStorage.setItem("zhuyan-viewMode", m);
+      renderPostList();
+    }
     const POSTS = [
   {
     slug: "article-474d055d7a52",
@@ -5289,7 +5470,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function sharePost(slug) {
       const post = getAllPosts().find(p => p.slug === slug);
       const title = post ? post.title : "铸言";
-      const url = location.origin + location.pathname + "#post/" + encodeURIComponent(slug);
+      const url = new URL("posts/" + encodeURIComponent(slug) + ".html", location.href).href;
       const data = { title: title, text: "来自「铸言」的文章：" + title, url: url };
       if (navigator.share) {
         navigator.share(data).catch(() => {});
@@ -5874,30 +6055,55 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function renderPostList() {
       const container = document.getElementById("post-list");
       if (!container) return;
-      const posts = getFilteredPosts();
+      const all = getFilteredPosts();
 
       let info = "";
       if (currentSearch) {
-        info = `<div class="filter-result-info">搜索「${escapeHtml(currentSearch)}」 · 共 ${posts.length} 篇 <span class="filter-clear" onclick="clearSearch()">清除搜索</span></div>`;
+        info = `<div class="filter-result-info">搜索「${escapeHtml(currentSearch)}」 · 共 ${all.length} 篇 <span class="filter-clear" onclick="clearSearch()">清除搜索</span></div>`;
       } else if (currentFilter.category || currentFilter.tag) {
         let parts = [];
         if (currentFilter.category) parts.push(currentFilter.category);
         if (currentFilter.tag) parts.push("#" + currentFilter.tag);
-        info = `<div class="filter-result-info">筛选：${parts.join(" + ")} · 共 ${posts.length} 篇 <span class="filter-clear" onclick="clearFilter()">全部清除</span></div>`;
+        info = `<div class="filter-result-info">筛选：${parts.join(" + ")} · 共 ${all.length} 篇 <span class="filter-clear" onclick="clearFilter()">全部清除</span></div>`;
       } else {
-        info = `<div class="section-title"><h2>全部文章</h2><div class="line"></div><span class="count">${posts.length} 篇</span></div>`;
+        info = `<div class="section-title">
+          <h2>全部文章</h2><div class="line"></div><span class="count">${all.length} 篇</span>
+          <div class="view-toggle">
+            <button class="view-btn ${viewMode === 'list' ? 'active' : ''}" onclick="setViewMode('list')" title="列表视图">☰ 列表</button>
+            <button class="view-btn ${viewMode === 'grid' ? 'active' : ''}" onclick="setViewMode('grid')" title="卡片视图">▦ 卡片</button>
+          </div>
+        </div>`;
       }
 
-      container.innerHTML = info + posts.map((post, i) => `
+      // 卡片网格模式
+      if (viewMode === 'grid' && !currentSearch && !currentFilter.category && !currentFilter.tag) {
+        const gridHTML = `<div class="post-grid">` +
+          all.map((post, i) => `
+            <div class="featured-card reveal ${isFeatured(post.slug) ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
+              <div class="post-meta"><time>${formatDate(post.date)}</time><span>·</span>${post.category || "未分类"}<span>·</span><span>${post.tags.length} 个标签</span>${isFeatured(post.slug) ? '<span class="pin-badge">★ 精选</span>' : ''}</div>
+              <h3>${escapeHtml(post.title)}</h3>
+              <p class="excerpt">${displayExcerpt(post)}</p>
+              <div class="post-tags">${post.tags.slice(0,4).map(t => `<span class="post-tag">#${t}</span>`).join("")}${post.tags.length > 4 ? `<span class="post-tag">+${post.tags.length-4}</span>` : ""}</div>
+              ${isAdmin ? `<div style="margin-top:10px;"><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${isFeatured(post.slug) ? '✕ 取消精选' : '★ 设为精选'}</button></div>` : ""}
+            </div>
+          `).join("") + `</div>` +
+          (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
+        container.innerHTML = info + gridHTML;
+        setTimeout(observeReveal, 30);
+        return;
+      }
+
+      // 默认列表模式
+      container.innerHTML = info + all.map((post, i) => `
         <div class="post-card reveal" style="transition-delay:${Math.min(i * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
           <div class="post-meta">
             <time>${formatDate(post.date)}</time>
             <span>·</span>
             ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
             <span>${post.tags.length} 个标签</span>
-            ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
+            ${isFeatured(post.slug) ? `<span class="pin-badge">★ 精选</span>` : ""}
             ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
-            ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
+            ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${isFeatured(post.slug) ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
           </div>
           <h3>${highlight(post.title, currentSearch)}</h3>
           ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
@@ -5907,9 +6113,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
           ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
         </div>
-      `).join("") + (posts.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
+      `).join("") + (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
 
-      // 筛选/排序切换后立即触发渐入动画
       setTimeout(observeReveal, 30);
     }
 
@@ -6334,47 +6539,66 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     function renderAbout() {
       incrementTraffic();
-      const traffic = getTraffic();
-      const totalViews = getTotalViews();
-      const totalComments = getTotalComments();
       const app = document.getElementById("app");
       const tags = getAllTags();
       const categories = getAllCategories();
       const allPosts = getAllPosts();
 
+      // 计算正向作品数据（代替虚高的流量数字）
+      const totalWords = allPosts.reduce((s, p) => s + (p.content ? p.content.replace(/\s/g, "").length : 0), 0);
+      const dates = allPosts.map(p => p.date).filter(Boolean).sort();
+      const firstDate = dates[0];
+      const lastDate = dates[dates.length - 1];
+      let spanDays = 0;
+      if (firstDate && lastDate) {
+        spanDays = Math.max(1, Math.round((new Date(lastDate) - new Date(firstDate)) / 86400000) + 1);
+      }
       app.innerHTML = `
         <header style="margin-bottom:48px;text-align:center;">
           <h1 style="font-family:var(--font-cursive);font-size:40px;font-weight:400;color:var(--fg);letter-spacing:6px;">关于</h1>
         </header>
+
         <div class="about-stats">
-          <div class="stat-card reveal">
-            <div class="num">${allPosts.length}</div>
-            <div class="label">篇文章</div>
-          </div>
-          <div class="stat-card reveal" style="transition-delay:0.1s">
-            <div class="num">${categories.length}</div>
-            <div class="label">种文体</div>
-          </div>
-          <div class="stat-card reveal" style="transition-delay:0.2s">
-            <div class="num">${tags.length}</div>
-            <div class="label">个标签</div>
-          </div>
+          <div class="stat-card reveal"><div class="num">${allPosts.length}</div><div class="label">篇文字</div></div>
+          <div class="stat-card reveal" style="transition-delay:0.1s"><div class="num">${totalWords.toLocaleString()}</div><div class="label">字累计</div></div>
+          <div class="stat-card reveal" style="transition-delay:0.2s"><div class="num">${categories.length}</div><div class="label">种文体</div></div>
+          <div class="stat-card reveal" style="transition-delay:0.3s"><div class="num">${spanDays}</div><div class="label">天创作跨度</div></div>
         </div>
+
         <div class="divider"><span>· · ·</span></div>
+
         <div class="markdown" style="margin-top:32px;">
           ${renderMarkdown(getBio())}
         </div>
+
+        <!-- 能力标签：强调“能提供什么”，而非人设 -->
+        <div class="cap-section">
+          <h2 class="cap-title">我能提供的</h2>
+          <div class="cap-tags">
+            <div class="cap-tag"><span class="cap-ico">✒</span><div><b>文学写作</b><small>散文 · 小说 · 诗歌 · 评论</small></div></div>
+            <div class="cap-tag"><span class="cap-ico">✎</span><div><b>内容编辑与策划</b><small>选题 · 栏目 · 节奏 · 留白</small></div></div>
+            <div class="cap-tag"><span class="cap-ico">▦</span><div><b>排版与视觉设计</b><small>国风版式 · 阅读体验</small></div></div>
+            <div class="cap-tag"><span class="cap-ico">⟠</span><div><b>建站与技术实现</b><small>静态站 · 动效 · 交互</small></div></div>
+          </div>
+        </div>
+
+        <div class="value-prop">把真实的写作、稳定的审美与可用的技术，交给需要它们的人。</div>
+
+        <!-- 数字名片 / 联系方式 -->
+        <div class="contact-section">
+          <h2 class="cap-title">怎么找到我</h2>
+          <div class="contact-links">
+            <a class="contact-link" href="https://github.com/mmax423" target="_blank" rel="noopener">GitHub · mmax423</a>
+            <a class="contact-link" href="mailto:optimism0901@outlook.com">邮箱 · optimism0901@outlook.com</a>
+            <span class="contact-link">公众号 · 铸儿儿</span>
+            <span class="contact-link disabled">小红书 · 待补充</span>
+            <span class="contact-link disabled">简历 PDF · 待补充</span>
+          </div>
+          <p class="contact-note">开放转载、约稿、实习与内容合作 —— 也欢迎只是来读读写写的人。</p>
+        </div>
+
         ${isAdmin ? `<div style="margin-top:32px;text-align:center;"><button class="btn btn-secondary" style="padding:8px 20px;border:0.5px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:14px;color:var(--fg-muted);transition:var(--transition);background:transparent;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg-muted)'" onclick="editBio()">编辑简介</button></div>` : ""}
       `;
-      // 在内容末尾追加流量统计
-      const trafficHTML = `
-        <div class="traffic-stats">
-          <div class="traffic-card"><div class="num">${traffic.visits || 0}</div><div class="label">访问次数</div></div>
-          <div class="traffic-card"><div class="num">${totalViews}</div><div class="label">文章阅读</div></div>
-          <div class="traffic-card"><div class="num">${totalComments}</div><div class="label">评论数</div></div>
-        </div>
-      `;
-      app.innerHTML += trafficHTML;
     }
 
     // ===== 写作年表（时间线）=====
@@ -6612,6 +6836,25 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       if (typeof Weather !== "undefined") Weather.setMode(m, "测试 · " + ({ off:"关", rain:"雨", snow:"雪", fog:"雾", stars:"星空", sun:"晴" })[m] || m);
     }
 
+    // 天气状态药丸点击切换：开↔关（关时记住之前的模式以便恢复）
+    let weatherBeforeOff = null;  // 关闭前记录的模式
+    function toggleWeather() {
+      const root = document.getElementById("weather-root");
+      if (!root) return;
+      const isOff = root.classList.contains("weather-off") || localStorage.getItem("weather-manual") === "off";
+      if (isOff) {
+        // 恢复：清除"off"，回到之前模式或自动
+        localStorage.removeItem("weather-manual");
+        weatherBeforeOff = null;
+        if (typeof Weather !== "undefined") Weather.syncToTheme();
+      } else {
+        // 关闭：记录当前模式，设为 off
+        weatherBeforeOff = typeof Weather !== "undefined" ? window.__weatherMode || null : null;
+        localStorage.setItem("weather-manual", "off");
+        if (typeof Weather !== "undefined") Weather.setMode("off", "天气动效 · 已关闭");
+      }
+    }
+
     // ===== Header 滚动效果 =====
     window.addEventListener("scroll", () => {
       const header = document.getElementById("header");
@@ -6755,14 +6998,17 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         particles = [];
         const W = window.innerWidth, H = window.innerHeight;
         if (mode === "rain") {
-          // 最开始那种细柔小雨：1px 细丝、低透明度，日间靠冷色滤镜显形
-          const n = Math.floor(W / 6);
+          // 毫毛细雨：发丝细、长条、低透明度；统一风向（可被吹斜，但不各自乱游）
+          const WIND = 1.4;                            // 全局横向风：所有雨丝共用，决定整体倾斜
+          const n = Math.floor(W / 10);                // 雨水减少
           for (let i = 0; i < n; i++) {
+            const vx = WIND + (Math.random() - 0.5) * 0.4;  // 仅极小幅抖动，整体同向
             particles.push({
               x: Math.random() * W, y: Math.random() * H,
-              len: 8 + Math.random() * 14,
-              speed: 4 + Math.random() * 6,
-              o: 0.16 + Math.random() * 0.30
+              len: 18 + Math.random() * 30,            // 长条雨丝
+              speed: 4 + Math.random() * 5,            // 直直飞落
+              vx: vx,
+              o: 0.10 + Math.random() * 0.22           // 毫毛细雨 → 更柔更低透明度
             });
           }
         } else if (mode === "snow") {
@@ -6821,16 +7067,20 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         ctx.clearRect(0, 0, W, H);
         if (mode === "rain") {
           ctx.strokeStyle = isDark() ? "rgba(200,216,240,1)" : "rgba(108,128,160,1)";
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 0.6;                      // 毫毛细
           ctx.lineCap = "round";
           for (const p of particles) {
             ctx.globalAlpha = p.o;
+            const m = Math.hypot(p.vx, p.speed) || 1;
+            const ux = p.vx / m, uy = p.speed / m;   // 雨丝方向与飘动方向一致
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x - 1.4, p.y + p.len);
+            ctx.lineTo(p.x + ux * p.len, p.y + uy * p.len);
             ctx.stroke();
-            p.y += p.speed; p.x -= 0.35;
+            p.y += p.speed; p.x += p.vx;
             if (p.y > H) { p.y = -p.len; p.x = Math.random() * W; }
+            else if (p.x < -p.len) p.x = W + p.len;
+            else if (p.x > W + p.len) p.x = -p.len;
           }
           ctx.globalAlpha = 1;
         } else if (mode === "snow") {
@@ -6973,7 +7223,19 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
       // 夜间模式自动开星空；手动覆盖优先
       function syncToTheme() {
-        if (localStorage.getItem("weather-manual")) return;
+        if (localStorage.getItem("weather-manual")) return;  // 仍保持「关」状态，不恢复
+        if (mode === "off") {
+          // 动效曾被关掉、现由药丸切回「开」：按最近一次真实天气 / 主题恢复
+          if (lastBase && lastBase !== "sun") {
+            const lab = { rain: "雨", snow: "雪", fog: "雾" }[lastBase];
+            setMode(resolveMode(lastBase), "当下 · " + lab);
+          } else if (document.body.classList.contains("dark")) {
+            setMode("stars", "夜间模式 · 星空");
+          } else {
+            autoWeather();
+          }
+          return;
+        }
         if (lastBase && lastBase !== "sun") return;   // 雨/雪/雾 不受主题影响，保持当前
         if (document.body.classList.contains("dark")) setMode("stars", "夜间模式 · 星空");
         else autoWeather();
