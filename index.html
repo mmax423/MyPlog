@@ -904,6 +904,7 @@
     .markdown p {
       margin-top: 16px;
       margin-bottom: 16px;
+      text-align: left;          /* 防止 contenteditable 残留居中样式导致段落偏移 */
     }
     .markdown ul, .markdown ol {
       margin-top: 16px;
@@ -1330,6 +1331,15 @@
     }
     .editor-toolbar button:hover { border-color: var(--accent); color: var(--accent); }
     .editor-toolbar button:active { transform: scale(0.94); }
+    .toolbar-sep {
+      display: inline-block;
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      vertical-align: middle;
+      margin: 0 4px;
+    }
+    .align-btn { font-size: 12px !important; min-width: 40px !important; }
     .rte {
       min-height: 240px;
       max-height: 60vh;
@@ -1543,6 +1553,19 @@
     .comment-form textarea { min-height: 60px; }
     .comment-form .btn { align-self: flex-end; }
 
+    /* ===== Waline 评论区风格融入 ===== */
+    #waline { --waline-theme-color: var(--accent); --waline-active-color: var(--accent-hover); --waline-border-radius: var(--radius); --waline-text-color: var(--fg); --waline-bgcolor: transparent; --waline-bgcolor-light: var(--bg-soft); --waline-bgcolor-hover: #f0ede5; --waline-border-color: var(--border); --waline-disable-bgcolor: var(--bg); --waline-comment-bgcolor: transparent; --waline-info-color: var(--fg-muted); --waline-font-size: 14px; --waline-font-family: var(--font-sans); }
+    #waline .wl-header { border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    #waline .wl-editor, #waline .wl-input { border: 1px solid var(--border); background: var(--bg-card); color: var(--fg); font-family: var(--font-sans); transition: var(--transition); }
+    #waline .wl-editor:focus, #waline .wl-input:focus { border-color: var(--accent); outline: none; }
+    #waline .wl-btn { background: var(--accent) !important; color: #fff !important; border-radius: var(--radius) !important; padding: 6px 18px; font-size: 13px; cursor: pointer; transition: var(--transition); }
+    #waline .wl-btn:hover { background: var(--accent-hover) !important; }
+    #waline .wl-comment-nav { border-bottom: 1px solid var(--border); }
+    #waline .wl-item { border-bottom: 1px dashed var(--border); }
+    #waline .wl-content { color: var(--fg-muted); line-height: 1.7; }
+    #waline .wl-nick { color: var(--fg); font-weight: 600; }
+    #waline .wl-reply-count { color: var(--accent); }
+
     /* ===== 图片上传 ===== */
     .img-upload-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 16px; text-align: center; cursor: pointer; transition: var(--transition); margin-bottom: 8px; }
     .img-upload-area:hover { border-color: var(--accent); background: var(--accent-soft); }
@@ -1617,32 +1640,8 @@
     }
     .weather-stars #weather-sky { opacity: 1; }
 
-    /* 晴天：右上暖阳光晕 + 旋转金色光柱(god-rays) + 漂浮光尘 */
-    #weather-sun {
-      position: absolute; inset: 0; opacity: 0; transition: opacity .8s ease;
-      background:
-        radial-gradient(46vw 46vw at 84% 6%, rgba(255,224,150,.55) 0%, rgba(255,205,110,.20) 35%, transparent 62%),
-        linear-gradient(180deg, rgba(255,238,190,.12) 0%, transparent 44%);
-    }
-    .weather-sun #weather-sun { opacity: 1; }
-    .weather-sun #weather-sun::before {       /* 太阳本体光晕 */
-      content: ""; position: absolute; top: 3%; right: 8%;
-      width: 130px; height: 130px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,244,200,.98) 0%, rgba(255,216,130,.55) 45%, transparent 72%);
-      box-shadow: 0 0 90px 36px rgba(255,214,120,.40);
-      animation: sunPulse 6s ease-in-out infinite;
-    }
-    .weather-sun #weather-sun::after {        /* 旋转光柱 */
-      content: ""; position: absolute; top: -32vh; right: -26vw;
-      width: 84vw; height: 84vw;
-      background: repeating-conic-gradient(from 0deg at 50% 50%,
-        rgba(255,232,165,.16) 0deg 5deg, transparent 5deg 17deg);
-      -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 60%);
-      mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 60%);
-      animation: sunRays 30s linear infinite;
-    }
-    @keyframes sunPulse { 0%,100% { transform: scale(1); opacity: .92; } 50% { transform: scale(1.06); opacity: 1; } }
-    @keyframes sunRays { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    /* 晴天/多云：不再画天空（含蓝色渐变与暖色底），仅由 Canvas 的细节元素烘托氛围 */
+    #weather-sun { display: none; }
 
     /* 天气状态指示（只读，非交互） */
     #weather-status {
@@ -1753,6 +1752,8 @@
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
+  <!-- Twikoo 评论后端 SDK（本地托管；完整版含tcb用于腾讯云开发，精简版用于 Vercel/CF Worker/Netlify 等非Tencent平台） -->
+  <script defer src="twikoo.all.min.js"></script>
   <!-- 真实全站访问量（跨设备，第三方不蒜子） -->
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
   <script>
@@ -4985,6 +4986,75 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     const STORAGE_KEY = "zhuer_blog_posts";
     const BIO_KEY = "zhuer_blog_bio";
     const AUTH_KEY = "zhuer_blog_auth";
+    const CHANGELOG_KEY = "zhuer_changelog";
+    const HANDBOOK_KEY = "zhuer_handbook";
+    const GH_TOKEN_KEY = "zhuer_gh_token";   // 管理员 GitHub PAT，仅存本机浏览器，不硬编码、不上传
+
+    // ===== GitHub Issues 当 CMS（文章跨设备存储）=====
+    // 读：公开 API，任意设备可拉取（无需登录）→ 跨设备可见
+    // 写：管理员发文时用本机 PAT 调 API 创建/更新 Issue
+    const GH_CMS = {
+      enabled: true,
+      repo: "mmax423/MyPlog",
+      label: "blog",
+      apiBase: "https://api.github.com/repos/mmax423/MyPlog"
+    };
+    let GH_POSTS = [];   // 从 GitHub Issues 预拉取的缓存（启动+发文后刷新）
+    const GH_ISSUE_RE = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
+
+    // 关于页「站点更新日志」默认内容（管理员可在关于页编辑覆盖）
+    const DEFAULT_CHANGELOG = `## 2026-07-16
+- 后端升级：采用 **GitHub Issues 当 CMS**，文章发布后自动同步到仓库 Issue，手机/任意设备刷新即可看到（解决 localStorage 不跨设备问题）。
+- 评论系统确定采用 **Twikoo（腾讯云开发）**：游客填昵称即可留言，且所有人的评论跨设备互相可见（彻底替代 localStorage 单机评论）。envId 由管理员在「设置 → 评论后端」填写，仅存本机。
+- 编辑器增强：新增左/居中/两端对齐、缩进/悬挂、行距下拉；修复 contenteditable 残留居中导致段落偏移。
+- 管理员登录改为「账号/密码一致」校验，密码为「防护」。
+- 天气动效二次迭代：去除画出的天空渐变、收紧模糊光带、多云云朵锚定页面顶端（下滚随页面离开）、云体更写实。
+
+## 2026-07-15
+- 接入可插拔后端适配器（评论 / 点赞 / 访问统计走统一 Backend 接口）。
+- 因 LeanCloud 国内版停服，曾迁移至 Waline（Vercel + Neon）；后因其国内不可达而放弃，转 giscus。
+- 文章续读：按 slug 持久化阅读进度，首次从头、看过续读。
+- 精选统一为单一数据源 post.pinned；去重防止重复文章；精选置顶 + 精选集 + 访问统计。
+
+## 2026-07-14 及之前
+- 修复天气动效关闭后无法打开（syncToTheme 补 mode==="off" 分支）。
+- P0 三件套：首页多显 + 精选置顶、每篇独立 URL（SSG 生成 70 篇）、关于页数字名片。
+- 四反馈修复：精选框竖排、取消精选按钮、视图切换（列表/卡片）、浮字手机端挡内容。
+- 部署到 GitHub Pages（mmax423.github.io/MyPlog）。`;
+
+    // 关于页「运转手册」默认内容（管理员可在关于页编辑覆盖）
+    const DEFAULT_HANDBOOK = `## 文件结构
+- index.html：站点权威源（所有改动在此）。
+- build_ssg.js：从 index.html 提取 POSTS 生成 posts/<slug>.html。
+- github-deploy/：同步副本，供 GitHub Pages 部署。
+
+## 编辑与发布
+1. 管理员登录（账号与密码均为「防护」）。
+2. 进入编辑界面新建 / 修改文章（Markdown 富文本）。
+3. 保存写入 localStorage，本机立即生效。
+4. 同步 index.html 到 github-deploy/。
+5. 部署：CloudStudio 预览，或本地 git push origin main 触发 GitHub Pages。
+
+## 后端与互动（现状）
+- 评论：Twikoo（腾讯云开发 CloudBase），游客填昵称即可留言，跨设备互相可见；envId 由管理员在「设置 → 评论后端」填写，仅存本机。
+- 点赞 / 浏览量：localStorage（全站 PV 另接不蒜子）。
+- 管理员：本地密码「防护」。
+
+## 天气动效
+- 来源：open-meteo 实时天气（按访客定位）。
+- 模式：晴 / 多云 / 雾 / 雪 / 雨 / 星空。
+- 多云云朵锚定页面顶端，向下滚动随页面离开视口。
+
+## 已知问题
+- GitHub Pages 未推送（需本地 push）。
+- 评论后端未启用（giscus 待 Discussions + categoryId）。
+- 管理员密码明文硬编码于公开 HTML，仅作编辑开关。
+
+## 后续路线
+- 分发层：OG 分享卡片 + 评论后端。
+- 可发现层：独立静态页 + SEO。
+- 内容资产层：专栏 / 系列 / 作者手记。
+- 探索：接入微信等外部平台。`;
     const VIEWS_KEY = "zhuer_blog_views";
     const LIKES_KEY = "zhuer_blog_likes";
     const COMMENTS_KEY = "zhuer_blog_comments";
@@ -4997,11 +5067,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     //          3) 把下面 enabled 改为 true，并填入 repoId / categoryId；
     //          4) 推送到 GitHub 后，文章页即显示真实跨设备评论。
     const GISCUS_CONFIG = {
-      enabled: false,
+      enabled: false,   // 关闭：giscus 强制 GitHub 登录，路人无法留言；改用本地游客昵称评论
       repo: "mmax423/MyPlog",
-      repoId: "YOUR_REPO_ID",
-      category: "Announcements",
-      categoryId: "YOUR_CATEGORY_ID",
+      repoId: "R_kgDOTWrCgg",
+      category: "General",
+      categoryId: "DIC_kwDOTWrCgs4DBTTM",
       mapping: "title",
       theme: "preferred_color_scheme"
     };
@@ -5022,118 +5092,165 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       s.setAttribute("data-term", term);
       s.setAttribute("data-reactions-enabled", "1");
       s.setAttribute("data-emit-metadata", "0");
-      s.setAttribute("data-input-position", "top");
+      s.setAttribute("data-input-position", "bottom");
+      s.setAttribute("data-strict", "0");
       s.setAttribute("data-theme", GISCUS_CONFIG.theme);
       s.setAttribute("data-lang", "zh-CN");
       s.setAttribute("data-loading", "lazy");
       host.appendChild(s);
     }
 
-    // ===== 后端适配器（可插拔：LeanCloud / 本地回退）=====
-    // 未填 appId 时自动回退到 localStorage，站点照常工作；填好后即变为共享后端。
-    const BACKEND_CONFIG = {
-      provider: "leancloud",
-      appId: "",          // ← 填你的 LeanCloud App ID
-      appKey: "",         // ← 填你的 LeanCloud App Key
-      serverURL: ""       // ← 填你的 LeanCloud 服务域名（CN 账号形如 https://xxxx.api.lncldapi.com）
-    };
-    let LC = null; // AV 命名空间
-    (function loadLeanCloud() {
-      if (!BACKEND_CONFIG.appId) return; // 未配置 → 用本地
-      const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/leancloud-storage@4/dist/av-min.js";
-      s.onload = () => {
-        try {
-          LC = window.AV;
-          LC.init({ appId: BACKEND_CONFIG.appId, appKey: BACKEND_CONFIG.appKey, serverURL: BACKEND_CONFIG.serverURL });
-          // 已有登录会话则恢复管理员态
-          const u = LC.User.current();
-          if (u && u.get("isAdmin") === true) { isAdmin = true; localStorage.setItem(AUTH_KEY, "true"); updateAdminUI(); }
-        } catch (e) { LC = null; }
+    // ===== Twikoo 评论区初始化（游客昵称、跨设备共享）=====
+    function initTwikoo(slug) {
+      const el = document.getElementById("tcomment");
+      if (!el) return;
+      let tries = 0;
+      const tryInit = () => {
+        if (window.twikoo) {
+          el.innerHTML = "";
+          try {
+            twikoo.init({
+              envId: TWIKOO_CONFIG.envId,
+              el: "#tcomment",
+              path: "post/" + slug,   // 按文章 slug 区分评论串，避免 hash 路由下混在一起
+              lang: "zh-CN"
+            });
+          } catch (e) { console.error("Twikoo init failed", e); }
+        } else if (tries++ < 25) {
+          setTimeout(tryInit, 200);  // SDK 尚未加载完，轮询等待
+        } else {
+          el.innerHTML = '<div style="color:var(--fg-light);font-size:14px;padding:12px 0;">评论组件加载失败，请刷新页面重试</div>';
+        }
       };
-      s.onerror = () => { LC = null; };
+      tryInit();
+    }
+
+    // ===== 后端适配器（可插拔：Waline / 本地回退）=====
+    // LeanCloud 已于 2026-01 宣布停服(2027 关停)，改用 Waline（Vercel + Neon 免费）
+    // 未填 serverURL 时自动回退到 localStorage，站点照常工作；填好后即变为共享后端。
+    const WALINE_CONFIG = {
+      serverURL: ""       // ← 暂未配置可用后端（Waline/Vercel 国内不可达）；留空则回退本地游客评论
+    };
+
+    // ===== Twikoo 评论后端（腾讯云开发 CloudBase）=====
+    // 游客填昵称即可留言，评论存云端、跨设备互相可见（解决 localStorage 各看各的痛点）。
+    // envId 来自「设置 → 评论后端」，仅存本机 localStorage，不硬编码、不上传。
+    const TWIKOO_KEY = "zhuer_twikoo_env";
+    const TWIKOO_CONFIG = {
+      enabled: false,
+      get envId() { return (localStorage.getItem(TWIKOO_KEY) || "").trim(); }
+    };
+    let _walineLoaded = false, _walineClient = null;
+    (function loadWalineClient() {
+      if (!WALINE_CONFIG.serverURL) return; // 未配置 → 用本地
+      const s = document.createElement("script");
+      s.src = "https://unpkg.com/@waline/client@v3/dist/waline.js";
+      s.onload = () => { _walineLoaded = true; _walineClient = window.Waline; };
+      s.onerror = () => { _walineLoaded = false; };
       document.head.appendChild(s);
     })();
 
     const Backend = {
-      get ready() { return !!LC; },
+      get ready() { return !!WALINE_CONFIG.serverURL && _walineLoaded; },
       deviceId() {
         let id = localStorage.getItem("zhuer_device_id");
         if (!id) { id = "d_" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("zhuer_device_id", id); }
         return id;
       },
+      // ---- 浏览量（PV）：Waline pageviewCount 或本地回退 ----
       async trackView(slug) {
-        if (!LC) { incrementViews(slug); return; }
-        try {
-          const q = new LC.Query("PostStat"); q.equalTo("slug", slug);
-          let o = await q.first();
-          if (!o) { o = new LC.Object("PostStat"); o.set("slug", slug); o.set("views", 0); }
-          o.increment("views", 1); await o.save();
-          const gq = new LC.Query("SiteStat"); gq.equalTo("key", "global");
-          let g = await gq.first();
-          if (!g) { g = new LC.Object("SiteStat"); g.set("key", "global"); g.set("visits", 0); }
-          g.increment("visits", 1); await g.save();
-        } catch (e) {}
+        if (this.ready && _walineClient) {
+          try { _walineClient.pageviewCount({ serverURL: WALINE_CONFIG.serverURL, path: slug, update: true }); } catch(e) {}
+        }
+        incrementViews(slug);
       },
       async getViews(slug) {
-        if (!LC) return getViews(slug);
-        try { const q = new LC.Query("PostStat"); q.equalTo("slug", slug); const o = await q.first(); return o ? (o.get("views") || 0) : 0; }
-        catch (e) { return getViews(slug); }
+        if (this.ready) {
+          try {
+            const tmp = document.createElement("span");
+            tmp.className = "waline-pageview-count";
+            tmp.setAttribute("data-path", slug);
+            tmp.style.display = "none";
+            document.body.appendChild(tmp);
+            if (_walineClient) {
+              await _walineClient.pageviewCount({ serverURL: WALINE_CONFIG.serverURL, path: slug, update: false });
+              const val = parseInt(tmp.textContent, 10);
+              document.body.removeChild(tmp);
+              if (!isNaN(val) && val > 0) return val;
+            }
+            document.body.removeChild(tmp);
+          } catch (e) {}
+        }
+        return getViews(slug);
       },
       async getSiteViews() {
-        if (!LC) return null;
-        try { const q = new LC.Query("SiteStat"); q.equalTo("key", "global"); const o = await q.first(); return o ? (o.get("visits") || 0) : null; }
-        catch (e) { return null; }
-      },
-      async getLikes(slug) {
-        if (!LC) return getLikes(slug);
-        try { const q = new LC.Query("Like"); q.equalTo("slug", slug); return await q.count(); }
-        catch (e) { return getLikes(slug); }
-      },
-      async isLiked(slug) {
-        if (!LC) return isLiked(slug);
-        try { const q = new LC.Query("Like"); q.equalTo("slug", slug); q.equalTo("deviceId", this.deviceId()); return !!(await q.first()); }
-        catch (e) { return isLiked(slug); }
-      },
-      async toggleLike(slug) {
-        if (!LC) { localToggleLike(slug); return getLikes(slug); }
-        try {
-          const q = new LC.Query("Like"); q.equalTo("slug", slug); q.equalTo("deviceId", this.deviceId());
-          const existing = await q.first();
-          if (existing) { await existing.destroy(); } else { const o = new LC.Object("Like"); o.set("slug", slug); o.set("deviceId", this.deviceId()); await o.save(); }
-          return await this.getLikes(slug);
-        } catch (e) { localToggleLike(slug); return getLikes(slug); }
-      },
-      async getComments(slug) {
-        if (!LC) return getCommentsLocal(slug);
-        try {
-          const q = new LC.Query("Comment"); q.equalTo("slug", slug); q.descending("createdAt");
-          const list = await q.find();
-          return list.map(o => ({ id: o.id, name: o.get("name") || "匿名", text: o.get("text"), time: (o.get("createdAt") || new Date()).toISOString() }));
-        } catch (e) { return getCommentsLocal(slug); }
-      },
-      async addComment(slug, name, text) {
-        if (!LC) { addCommentLocal(slug, name, text); return; }
-        try { const o = new LC.Object("Comment"); o.set("slug", slug); o.set("name", name || "匿名"); o.set("text", text); await o.save(); } catch (e) { addCommentLocal(slug, name, text); }
-      },
-      async deleteComment(slug, id) {
-        if (!LC) {
-          if (typeof id === "string" && id.indexOf("local_") === 0) deleteCommentLocal(slug, parseInt(id.slice(6), 10));
-          return;
+        if (this.ready) {
+          try {
+            const tmp = document.createElement("span");
+            tmp.className = "waline-pageview-count";
+            tmp.setAttribute("data-path", "__site_index__");
+            tmp.style.display = "none";
+            document.body.appendChild(tmp);
+            if (_walineClient) {
+              await _walineClient.pageviewCount({ serverURL: WALINE_CONFIG.serverURL, path: "__site_index__", update: true });
+              const val = parseInt(tmp.textContent, 10);
+              document.body.removeChild(tmp);
+              if (!isNaN(val)) return val;
+            }
+            document.body.removeChild(tmp);
+          } catch (e) {}
         }
-        try { const o = LC.Object.createWithoutData("Comment", id); await o.destroy(); } catch (e) {}
+        return null;
       },
+      // ---- 点赞：Waline 无此功能，统一走 localStorage ----
+      async getLikes(slug) { return getLikes(slug); },
+      async isLiked(slug) { return isLiked(slug); },
+      async toggleLike(slug) { localToggleLike(slug); return getLikes(slug); },
+      // ---- 评论：由 Waline init() 接管（见 renderPost 中的 initWalineComments 调用）----
+      // 以下方法仅在未配置 Waline 时使用（localStorage 回退）
+      async getComments(slug) { return getCommentsLocal(slug); },
+      async addComment(slug, name, text) { addCommentLocal(slug, name, text); },
+      async deleteComment(slug, id) {
+        if (typeof id === "string" && id.indexOf("local_") === 0) deleteCommentLocal(slug, parseInt(id.slice(6), 10));
+      },
+      // ---- 管理员：文章管理仍用本地密码；密码须为"防护"，账号留空或同为"防护" ----
       async login(username, password) {
-        if (!LC) { if (password === ADMIN_PASSWORD) { isAdmin = true; localStorage.setItem(AUTH_KEY, "true"); return true; } return false; }
-        try { await LC.User.logIn(username, password); return true; } catch (e) { return false; }
+        if (password === ADMIN_PASSWORD && (username === "" || username === ADMIN_PASSWORD)) { isAdmin = true; localStorage.setItem(AUTH_KEY, "true"); return true; }
+        return false;
       },
       async logout() {
-        if (LC) { try { await LC.User.logOut(); } catch (e) {} }
         isAdmin = false; localStorage.removeItem(AUTH_KEY);
       },
-      isAdminUser() {
-        if (LC) { const u = LC.User.current(); return !!(u && u.get("isAdmin") === true); }
-        return isAdmin;
+      isAdminUser() { return isAdmin; },
+      // ---- Waline 初始化挂载（文章页评论区）----
+      initWalineComments(containerSelector, slug) {
+        if (!_walineClient || !WALINE_CONFIG.serverURL) return null;
+        try {
+          return _walineClient.init({
+            el: containerSelector,
+            serverURL: WALINE_CONFIG.serverURL,
+            path: slug,
+            pageview: false,
+            comment: true,
+            locale: {
+              nick: "昵称",
+              nickPlaceholder: "你的名字（选填）",
+              mail: "邮箱",
+              mailPlaceholder: "方便收到回复通知（选填）",
+              link: "网址",
+              linkPlaceholder: "（选填）",
+              comment: "写下你的评论...",
+              submit: "发表评论",
+              reply: "回复",
+              cancelReply: "取消回复",
+              preview: "预览",
+              commentCount: "%d 条评论",
+              sofa: "还没有评论，来说点什么吧",
+              admin: "管理者",
+              word: "字"
+            }
+          });
+        } catch(e) { return null; }
       }
     };
 
@@ -5156,12 +5273,13 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function getAllPosts() {
       const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const hidden = getHiddenSlugs();
-      // 按 slug 合并：用户编辑/新增的覆盖内置原版（避免同一条出现两篇）
+      // 按 slug 合并优先级：本地编辑(userPosts) > GitHub Issues(GH_POSTS) > 内置原版(POSTS)
       const map = new Map();
-      userPosts.forEach(p => map.set(p.slug, p));
-      POSTS.forEach(p => { if (!map.has(p.slug)) map.set(p.slug, p); });
+      POSTS.forEach(p => map.set(p.slug, p));
+      GH_POSTS.forEach(p => { if (!map.has(p.slug)) map.set(p.slug, p); });
+      userPosts.forEach(p => map.set(p.slug, p));   // 本地覆盖（含未同步的草稿/编辑）
       let all = [...map.values()].filter(p => !hidden.includes(p.slug));
-      // 防御性二次去重（防止 localStorage 出现同 slug 多条导致 Map 覆盖后仍有异常）
+      // 防御性二次去重
       const seen = new Set();
       all = all.filter(p => { if (seen.has(p.slug)) return false; seen.add(p.slug); return true; });
       if (!isAdmin) all = all.filter(p => !p.draft); // 草稿仅管理员可见
@@ -5180,6 +5298,115 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const filtered = userPosts.filter(p => p.slug !== slug);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    }
+
+    // ===== GitHub Issues CMS：文章跨设备存储 =====
+    function buildIssueBody(post) {
+      const fm = [
+        "---",
+        "slug: " + (post.slug || ""),
+        "category: " + (post.category || "未分类"),
+        "tags: " + (post.tags || []).join(", "),
+        "date: " + (post.date || ""),
+        "draft: " + (post.draft ? "true" : "false"),
+        "pinned: " + (post.pinned ? "true" : "false"),
+        "updatedAt: " + (post.updatedAt || ""),
+        "---",
+        "",
+        post.content || ""
+      ].join("\n");
+      return fm;
+    }
+    function parseIssueBody(body) {
+      const m = (body || "").match(GH_ISSUE_RE);
+      if (!m) return { meta: {}, content: body || "" };
+      const metaText = m[1], content = m[2];
+      const meta = {};
+      metaText.split("\n").forEach(line => {
+        const idx = line.indexOf(":");
+        if (idx > 0) {
+          const k = line.slice(0, idx).trim();
+          let v = line.slice(idx + 1).trim();
+          if (v === "true") v = true; else if (v === "false") v = false;
+          meta[k] = v;
+        }
+      });
+      return { meta, content };
+    }
+    // 公开拉取带 blog 标签的 issues（无需登录，跨设备可读）
+    async function fetchPostsFromGitHub() {
+      if (!GH_CMS.enabled) return [];
+      try {
+        const res = await fetch(`${GH_CMS.apiBase}/issues?state=open&per_page=100&labels=${encodeURIComponent(GH_CMS.label)}`, {
+          headers: { "Accept": "application/vnd.github+json" }
+        });
+        if (!res.ok) return [];
+        const issues = await res.json();
+        if (!Array.isArray(issues)) return [];
+        return issues.filter(i => !i.pull_request).map(issue => {
+          const { meta, content } = parseIssueBody(issue.body || "");
+          const c = (content || "").replace(/[#>*_`~]/g, " ").replace(/\s+/g, " ").trim();
+          return {
+            slug: meta.slug || ("gh-" + issue.number),
+            title: issue.title,
+            date: meta.date || (issue.created_at || "").slice(0, 10),
+            category: meta.category || "未分类",
+            tags: meta.tags ? meta.tags.split(",").map(t => t.trim()).filter(Boolean) : ["未分类"],
+            series: meta.series ? meta.series.split(",").map(s => s.trim()).filter(Boolean) : [],
+            draft: !!meta.draft,
+            pinned: !!meta.pinned,
+            excerpt: c.length > 80 ? c.slice(0, 80) + "…" : (c || "（无文字内容）"),
+            content: content,
+            updatedAt: meta.updatedAt || (issue.updated_at || "").slice(0, 10),
+            _ghIssue: issue.number,
+            _ghSource: true
+          };
+        });
+      } catch (e) { return []; }
+    }
+    // 管理员用本机 PAT 创建/更新 Issue；返回是否成功
+    async function pushPostToGitHub(post) {
+      const token = localStorage.getItem(GH_TOKEN_KEY);
+      if (!token) {
+        alert("未配置 GitHub Token：文章仅存本机。\n请在「设置 → GitHub 同步」粘贴 Token，发布后才会跨设备可见。");
+        return false;
+      }
+      const body = buildIssueBody(post);
+      const labels = [GH_CMS.label];
+      if (post.category) labels.push(post.category);
+      const headers = {
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json",
+        "Accept": "application/vnd.github+json"
+      };
+      try {
+        if (post._ghIssue) {
+          await fetch(`${GH_CMS.apiBase}/issues/${post._ghIssue}`, {
+            method: "PATCH", headers,
+            body: JSON.stringify({ title: post.title, body, labels })
+          });
+        } else {
+          const res = await fetch(`${GH_CMS.apiBase}/issues`, {
+            method: "POST", headers,
+            body: JSON.stringify({ title: post.title, body, labels })
+          });
+          if (!res.ok) { alert("同步失败：" + res.status); return false; }
+          const data = await res.json();
+          post._ghIssue = data.number;
+        }
+        return true;
+      } catch (e) { alert("同步到 GitHub 失败：" + e.message); return false; }
+    }
+    // 关闭（删除）GitHub 上的 Issue
+    async function closeGithubIssue(issueNumber) {
+      const token = localStorage.getItem(GH_TOKEN_KEY);
+      if (!token || !issueNumber) return;
+      try {
+        await fetch(`${GH_CMS.apiBase}/issues/${issueNumber}`, {
+          method: "PATCH", headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" },
+          body: JSON.stringify({ state: "closed" })
+        });
+      } catch (e) {}
     }
 
     // ===== 标签迁移 - 批量合并标签 =====
@@ -5241,6 +5468,15 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function saveBio(text) {
       localStorage.setItem(BIO_KEY, text);
     }
+
+    function getChangelog() {
+      return localStorage.getItem(CHANGELOG_KEY) || DEFAULT_CHANGELOG;
+    }
+    function saveChangelog(text) { localStorage.setItem(CHANGELOG_KEY, text); }
+    function getHandbook() {
+      return localStorage.getItem(HANDBOOK_KEY) || DEFAULT_HANDBOOK;
+    }
+    function saveHandbook(text) { localStorage.setItem(HANDBOOK_KEY, text); }
 
     function toggleAdmin() {
       if (isAdmin) {
@@ -5365,15 +5601,33 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <div class="editor-toolbar">
             <button type="button" title="加粗" onclick="rteExec('bold')"><b>B</b></button>
             <button type="button" title="斜体" onclick="rteExec('italic')"><i>I</i></button>
+            <span class="toolbar-sep"></span>
             <button type="button" title="二级标题" onclick="rteExec('formatBlock','H2')">H2</button>
             <button type="button" title="三级标题" onclick="rteExec('formatBlock','H3')">H3</button>
+            <span class="toolbar-sep"></span>
+            <button type="button" title="左对齐" onclick="rteAlign('left')" class="align-btn">⬿ 左</button>
+            <button type="button" title="居中" onclick="rteAlign('center')" class="align-btn">☰ 居</button>
+            <button type="button" title="两端对齐" onclick="rteAlign('justify')" class="align-btn">☷ 齐</button>
+            <select id="line-height-sel" onchange="rteLineHeight(this.value)" title="行距" style="height:32px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg-card);color:var(--fg);font-size:12px;font-family:var(--font-sans);cursor:pointer;padding:0 6px;">
+              <option value="">行距</option>
+              <option value="1.4">紧凑</option>
+              <option value="1.8" selected>正常</option>
+              <option value="2.2">宽松</option>
+              <option value="2.6">很宽</option>
+            </select>
+            <span class="toolbar-sep"></span>
+            <button type="button" title="增加缩进" onclick="rteExec('indent')">↳ 缩进</button>
+            <button type="button" title="减少缩进" onclick="rteExec('outdent')">↲ 悬挂</button>
+            <span class="toolbar-sep"></span>
             <button type="button" title="无序列表" onclick="rteExec('insertUnorderedList')">• 列表</button>
             <button type="button" title="有序列表" onclick="rteExec('insertOrderedList')">1. 列表</button>
+            <span class="toolbar-sep"></span>
             <button type="button" title="引用" onclick="rteExec('formatBlock','BLOCKQUOTE')">❝ 引用</button>
             <button type="button" title="插入链接" onclick="rteLink()">🔗 链接</button>
             <button type="button" title="插入图片" onclick="document.getElementById('img-input').click()">🖼 图片</button>
             <button type="button" title="分割线" onclick="rteExec('insertHorizontalRule')">― 分割线</button>
-            <button type="button" title="清除格式" onclick="rteClearFormat()">清除格式</button>
+            <span class="toolbar-sep"></span>
+            <button type="button" title="清除格式" onclick="rteClearFormat()">✕ 清除</button>
           </div>
           <div id="edit-content" class="rte" contenteditable="true" data-placeholder="在这里写下你的文字..."></div>
         </div>
@@ -5475,9 +5729,37 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       document.execCommand("removeFormat", false, null);
       document.execCommand("formatBlock", false, "P");
     }
+    function rteAlign(align) {
+      const ed = document.getElementById("edit-content");
+      ed.focus();
+      document.execCommand("justify" + align.charAt(0).toUpperCase() + align.slice(1), false, null);
+    }
+    function rteLineHeight(value) {
+      if (!value) return;
+      const ed = document.getElementById("edit-content");
+      ed.focus();
+      // 对当前选区所在段落设置行距（通过 style）
+      const sel = window.getSelection();
+      if (sel.rangeCount > 0) {
+        let node = sel.anchorNode;
+        while (node && node !== ed) {
+          if (node.nodeType === 1 && (node.tagName === 'P' || node.tagName === 'DIV')) {
+            node.style.lineHeight = value;
+            break;
+          }
+          node = node.parentNode;
+        }
+      }
+    }
     function getEditorMarkdown() {
       const ed = document.getElementById("edit-content");
       if (!ed) return "";
+      // 清理 contenteditable 产生的残留对齐样式，防止段落意外居中
+      let html = ed.innerHTML;
+      html = html.replace(/style="[^"]*text-align\s*:\s*center[^"]*"/gi, '');
+      html = html.replace(/style="[^"]*text-align\s*:\s*(left|right|justify)[^"]*"/gi, '');
+      html = html.replace(/<div[^>]*>\s*<\/div>/gi, '');   // 空占位 div
+      ed.innerHTML = html;
       const td = getTurndown();
       let md;
       if (td) md = td.turndown(ed.innerHTML).trim();
@@ -5511,12 +5793,30 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
       const now = new Date().toISOString().slice(0,10);
       const post = { slug, title, date, category, tags, series, draft, pinned, excerpt, content, updatedAt: now };
+      // 若编辑的是已同步到 GitHub 的文章，保留 issue 号以便更新同一篇
+      if (oldSlug) {
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]").find(p => p.slug === oldSlug);
+        if (existing && existing._ghIssue) post._ghIssue = existing._ghIssue;
+      }
       saveUserPost(post);
       clearAutosave(oldSlug || "new");
       stopAutosave();
       closeModal();
       navigate("home", null, { replace: true });
       handleRoute();
+      // 异步同步到 GitHub（仅非草稿；草稿留本地，避免公开仓库泄露未定稿）
+      if (GH_CMS.enabled && isAdmin && !draft) {
+        pushPostToGitHub(post).then(ok => {
+          if (ok) {
+            // 把 issue 号存回本地，便于下次编辑更新同一篇
+            const ups = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+            const i = ups.findIndex(p => p.slug === post.slug);
+            if (i >= 0) { ups[i]._ghIssue = post._ghIssue; ups[i]._ghSource = true; localStorage.setItem(STORAGE_KEY, JSON.stringify(ups)); }
+            // 刷新 GitHub 缓存并重渲染，使任意设备立即可见
+            fetchPostsFromGitHub().then(list => { GH_POSTS = list; if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute(); });
+          }
+        });
+      }
     }
 
     function deletePost(slug) {
@@ -5526,6 +5826,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       } else {
         hideSlug(slug);
       }
+      // 同步关闭 GitHub 上的 Issue（若已同步）
+      const gone = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]").find(p => p.slug === slug);
+      if (gone && gone._ghIssue) closeGithubIssue(gone._ghIssue).then(() => fetchPostsFromGitHub().then(l => { GH_POSTS = l; }));
       closeModal();
       navigate("home");
       handleRoute();
@@ -5551,6 +5854,53 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function saveBioContent() {
       const text = document.getElementById("bio-content").value.trim();
       saveBio(text);
+      closeModal();
+      navigate("about");
+      handleRoute();
+    }
+
+    function editChangelog() {
+      if (!isAdmin) return;
+      const modal = document.getElementById("modal-content");
+      modal.innerHTML = `
+        <h2>编辑站点更新日志</h2>
+        <div class="field">
+          <label>更新日志 (支持 Markdown)</label>
+          <textarea id="changelog-content" style="min-height:300px;">${getChangelog().replace(/`/g, "\\`")}</textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="saveChangelogContent()">保存</button>
+        </div>
+      `;
+      document.getElementById("modal-overlay").classList.add("open");
+    }
+    function saveChangelogContent() {
+      const text = document.getElementById("changelog-content").value.trim();
+      saveChangelog(text);
+      closeModal();
+      navigate("about");
+      handleRoute();
+    }
+    function editHandbook() {
+      if (!isAdmin) return;
+      const modal = document.getElementById("modal-content");
+      modal.innerHTML = `
+        <h2>编辑运转手册</h2>
+        <div class="field">
+          <label>运转手册 (支持 Markdown)</label>
+          <textarea id="handbook-content" style="min-height:300px;">${getHandbook().replace(/`/g, "\\`")}</textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="saveHandbookContent()">保存</button>
+        </div>
+      `;
+      document.getElementById("modal-overlay").classList.add("open");
+    }
+    function saveHandbookContent() {
+      const text = document.getElementById("handbook-content").value.trim();
+      saveHandbook(text);
       closeModal();
       navigate("about");
       handleRoute();
@@ -5731,6 +6081,26 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
         </div>
         <div class="settings-section">
+          <h4>GitHub 同步（文章跨设备）</h4>
+          <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">粘贴 GitHub Personal Access Token（只需 <code>public_repo</code> 权限）。发布文章会自动创建/更新仓库 Issue，手机等任意设备刷新即可看到。Token 仅存本机浏览器，不会上传或被他人看到。</p>
+          <input type="password" id="gh-token-input" placeholder="ghp_xxx 或 github_pat_xxx" value="${localStorage.getItem(GH_TOKEN_KEY) || ''}" style="width:100%;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-family:var(--font-sans);font-size:13px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn btn-primary" onclick="saveGithubToken()">保存 Token</button>
+            <button class="btn btn-secondary" onclick="testGithubToken()">测试连接</button>
+            <button class="btn btn-secondary" onclick="refreshGithubPosts()">立即拉取文章</button>
+          </div>
+          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">获取 Token：GitHub → 右上角头像 → Settings → Developer settings → Personal access tokens → Tokens(classic) → Generate → 勾 <code>public_repo</code> → Generate。</p>
+        </div>
+        <div class="settings-section">
+          <h4>评论后端（Twikoo · 游客共享）</h4>
+          <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">填入腾讯云开发环境 ID（envId），启用后访客填昵称即可留言，且所有人的评论跨设备互相可见。envId 仅存本机浏览器。部署与获取 envId 见「关于」页说明。</p>
+          <input type="text" id="twikoo-env-input" placeholder="例如：my-blog-1a2b3c" value="${localStorage.getItem(TWIKOO_KEY) || ''}" style="width:100%;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-family:var(--font-sans);font-size:13px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn btn-primary" onclick="saveTwikooEnv()">保存并启用</button>
+          </div>
+          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">若开启后评论区报错「未找到环境」，请确认：① 云函数已部署并选对版本；② 已在云开发「安全配置」把本站域名加入 WEB 安全域名；③ 已开启「匿名登录」。</p>
+        </div>
+        <div class="settings-section">
           <h4>天气动效测试</h4>
           <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">手动切换天气动效用于测试，会覆盖真实天气；选「自动」恢复跟随当下真实天气。</p>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -5741,6 +6111,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <button class="btn btn-secondary" onclick="setWeatherManual('fog')">雾</button>
             <button class="btn btn-secondary" onclick="setWeatherManual('stars')">星空</button>
             <button class="btn btn-secondary" onclick="setWeatherManual('sun')">晴</button>
+            <button class="btn btn-secondary" onclick="setWeatherManual('cloud')">多云</button>
           </div>
         </div>
         <div class="btn-row">
@@ -5748,6 +6119,45 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         </div>
       `;
       document.getElementById("modal-overlay").classList.add("open");
+    }
+    // ===== GitHub 同步相关 =====
+    function saveGithubToken() {
+      const el = document.getElementById("gh-token-input");
+      if (!el) return;
+      const v = el.value.trim();
+      if (v) localStorage.setItem(GH_TOKEN_KEY, v); else localStorage.removeItem(GH_TOKEN_KEY);
+      alert("GitHub Token 已" + (v ? "保存（仅本机）" : "清除"));
+    }
+    function saveTwikooEnv() {
+      const el = document.getElementById("twikoo-env-input");
+      if (!el) return;
+      const v = el.value.trim();
+      if (v) localStorage.setItem(TWIKOO_KEY, v); else localStorage.removeItem(TWIKOO_KEY);
+      TWIKOO_CONFIG.enabled = !!v;
+      alert("Twikoo 环境" + (v ? "已保存并启用 ✅\n打开任意文章即可看到评论区" : "已清除（评论区将显示占位提示）"));
+      // 若当前正在文章页，重新渲染以挂载/卸载评论区
+      if (location.hash.startsWith("#/post/")) { closeModal(); handleRoute(); }
+    }
+    async function testGithubToken() {
+      const token = localStorage.getItem(GH_TOKEN_KEY);
+      if (!token) { alert("请先填写 Token"); return; }
+      try {
+        const res = await fetch(GH_CMS.apiBase, { headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" } });
+        if (res.ok) {
+          const repo = await res.json();
+          alert("连接成功 ✅\n仓库：" + repo.full_name + "\n（发布文章将自动同步到 Issues）");
+        } else if (res.status === 401) {
+          alert("Token 无效或被撤销（401），请重新生成");
+        } else {
+          alert("连接失败：" + res.status + " " + res.statusText);
+        }
+      } catch (e) { alert("请求错误：" + e.message); }
+    }
+    async function refreshGithubPosts() {
+      const list = await fetchPostsFromGitHub();
+      GH_POSTS = list;
+      handleRoute();
+      showToast("已从 GitHub 拉取 " + list.length + " 篇文章");
     }
     function exportBackup() {
       const keys = [STORAGE_KEY, BIO_KEY, TAGS_KEY, COMMENTS_KEY, VIEWS_KEY, LIKES_KEY, TRAFFIC_KEY, "guestbook", "hiddenSlugs", "extraTags", "zhuer_blog_liked", "theme", "tags-migrated-20260713"];
@@ -6365,28 +6775,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const liked = isLiked(slug);
       const comments = getCommentsLocal(slug);
 
-      // 评论区块：启用 giscus 则用 GitHub 真评论，否则用本地评论
+      // 评论区块：Twikoo 已配置则用云端共享评论（游客填昵称即可、跨设备互相可见）；
+      // 未配置则占位提示（不再使用本地 localStorage 单机评论）。
       let commentBlock;
-      if (GISCUS_CONFIG.enabled) {
-        commentBlock = `<div id="giscus-host"></div>`;
+      if (TWIKOO_CONFIG.envId) {
+        commentBlock = `<div id="tcomment"></div>`;
       } else {
         commentBlock = `
           <div class="comment-section">
-            <h3>评论 <span id="comment-count">${comments.length}</span></h3>
-            <div class="comment-list" id="comment-list">
-              ${comments.map((c) => `
-                <div class="comment-item">
-                  <span class="c-name">${escapeHtml(c.name)}</span>
-                  <span class="c-time">${formatDate((c.time || '').slice(0,10))}</span>
-                  ${isAdmin ? `<span class="filter-clear" style="margin-left:8px;font-size:12px;cursor:pointer;" onclick="deleteComment('${post.slug}','${c.id}')">删除</span>` : ''}
-                  <div class="c-text">${escapeHtml(c.text)}</div>
-                </div>
-              `).join('') || '<div style="color:var(--fg-light);font-size:14px;padding:8px 0;">还没有评论，来说点什么吧</div>'}
-            </div>
-            <div class="comment-form">
-              <input type="text" id="comment-name" placeholder="你的名字（选填）" maxlength="20">
-              <textarea id="comment-text" placeholder="写下你的评论..." maxlength="500"></textarea>
-              <button class="btn btn-primary" onclick="submitComment('${post.slug}')">发表评论</button>
+            <div style="color:var(--fg-light);font-size:14px;padding:14px 0;text-align:center;">
+              评论系统配置中，敬请期待 ✍️<br><span style="font-size:12px;">（管理员可在「设置 → 评论后端」填入 Twikoo 环境 ID 启用）</span>
             </div>
           </div>`;
       }
@@ -6421,7 +6819,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               <span class="like-count">${likes}</span>
             </button>
             <span class="stat-item view-count"><span class="icon">👁</span> ${views}</span>
-            <span class="stat-item"><span class="icon">💬</span> ${comments.length}</span>
+            ${TWIKOO_CONFIG.envId ? `<span class="stat-item"><span class="icon">💬</span></span>` : `<span class="stat-item"><span class="icon">💬</span> ${comments.length}</span>`}
             <button class="share-btn" onclick="sharePost('${post.slug}')">
               <span class="share-icon">↗</span> 分享
             </button>
@@ -6435,6 +6833,22 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
         </div>
       `;
+      // 评论区挂载：Twikoo 优先（云端共享）；未配置则跳过
+      if (TWIKOO_CONFIG.envId) {
+        initTwikoo(slug);
+      } else if (WALINE_CONFIG.serverURL) {
+        // Waline 接管评论区时异步挂载（等 DOM 就绪 + SDK 加载完成）
+        const tryInitWaline = () => {
+          if (_walineClient && document.getElementById("waline")) {
+            Backend.initWalineComments("#waline", slug);
+          } else if (!document.getElementById("waline")) {
+            // 页面已切换，放弃
+          } else {
+            setTimeout(tryInitWaline, 300); // 轮询等待 SDK
+          }
+        };
+        setTimeout(tryInitWaline, 100);
+      }
       if (GISCUS_CONFIG.enabled) loadGiscus(post.title);
 
       // 异步加载共享的评论/点赞/浏览量（本地或 LeanCloud 自动切换）
@@ -6451,27 +6865,31 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       window.addEventListener("scroll", _postScrollHandler, { passive: true });
     }
 
-    // 异步加载某篇文章的共享互动数据（评论/点赞/浏览量）
+    // 异步加载某篇文章的共享互动数据（PV/点赞；评论由 Waline 或 localStorage 各自管理）
     async function loadPostInteractions(slug) {
       try {
-        const [views, likes, liked, comments] = await Promise.all([
-          Backend.getViews(slug), Backend.getLikes(slug), Backend.isLiked(slug), Backend.getComments(slug)
+        const [views, likes, liked] = await Promise.all([
+          Backend.getViews(slug), Backend.getLikes(slug), Backend.isLiked(slug)
         ]);
         document.querySelectorAll('.view-count').forEach(el => el.textContent = views);
         const lb = document.getElementById('like-btn');
         if (lb) { lb.classList.toggle('liked', liked); lb.querySelector('.like-count').textContent = likes; }
-        const cl = document.getElementById('comment-list');
-        if (cl) {
-          cl.innerHTML = comments.map(c => `
-            <div class="comment-item">
-              <span class="c-name">${escapeHtml(c.name)}</span>
-              <span class="c-time">${formatDate((c.time || '').slice(0,10))}</span>
-              ${Backend.isAdminUser() ? `<span class="filter-clear" style="margin-left:8px;font-size:12px;cursor:pointer;" onclick="deleteComment('${slug}','${c.id}')">删除</span>` : ''}
-              <div class="c-text">${escapeHtml(c.text)}</div>
-            </div>`).join('') || '<div style="color:var(--fg-light);font-size:14px;padding:8px 0;">还没有评论，来说点什么吧</div>';
+        // 评论列表：仅本地模式时手动渲染（Twikoo / Waline 模式由其自身管理）
+        if (!WALINE_CONFIG.serverURL && !TWIKOO_CONFIG.envId) {
+          const comments = await Backend.getComments(slug);
+          const cl = document.getElementById('comment-list');
+          if (cl) {
+            cl.innerHTML = comments.map(c => `
+              <div class="comment-item">
+                <span class="c-name">${escapeHtml(c.name)}</span>
+                <span class="c-time">${formatDate((c.time || '').slice(0,10))}</span>
+                ${Backend.isAdminUser() ? `<span class="filter-clear" style="margin-left:8px;font-size:12px;cursor:pointer;" onclick="deleteComment('${slug}','${c.id}')">删除</span>` : ''}
+                <div class="c-text">${escapeHtml(c.text)}</div>
+              </div>`).join('') || '<div style="color:var(--fg-light);font-size:14px;padding:8px 0;">还没有评论，来说点什么吧</div>';
+          }
+          const cc = document.getElementById('comment-count');
+          if (cc) cc.textContent = comments.length;
         }
-        const cc = document.getElementById('comment-count');
-        if (cc) cc.textContent = comments.length;
       } catch (e) {}
     }
 
@@ -6479,6 +6897,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const name = document.getElementById('comment-name').value.trim();
       const text = document.getElementById('comment-text').value.trim();
       if (!text) { alert('评论内容不能为空'); return; }
+      if (name) localStorage.setItem('zhuer_commenter_name', name);  // 记住昵称，下次自动填
       Backend.addComment(slug, name, text).then(() => loadPostInteractions(slug));
     }
 
@@ -6888,6 +7307,26 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <p class="contact-note">开放转载、约稿、实习与内容合作 —— 也欢迎只是来读读写写的人。</p>
         </div>
 
+        <div class="divider"><span>· · ·</span></div>
+
+        <!-- 站点更新日志 -->
+        <div class="about-doc-section">
+          <h2 class="cap-title">站点更新日志</h2>
+          <div class="markdown about-doc">${renderMarkdown(getChangelog())}</div>
+          ${isAdmin ? `<div style="margin-top:16px;"><button class="btn btn-secondary" style="padding:6px 16px;font-size:13px;color:var(--fg-muted);border:0.5px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg-muted)'" onclick="editChangelog()">编辑更新日志</button></div>` : ""}
+        </div>
+
+        <div class="divider"><span>· · ·</span></div>
+
+        <!-- 运转手册 -->
+        <div class="about-doc-section">
+          <h2 class="cap-title">运转手册</h2>
+          <div class="markdown about-doc">${renderMarkdown(getHandbook())}</div>
+          ${isAdmin ? `<div style="margin-top:16px;"><button class="btn btn-secondary" style="padding:6px 16px;font-size:13px;color:var(--fg-muted);border:0.5px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg-muted)'" onclick="editHandbook()">编辑运转手册</button></div>` : ""}
+        </div>
+
+        <div class="divider"><span>· · ·</span></div>
+
         ${isAdmin ? `<div style="margin-top:32px;text-align:center;"><button class="btn btn-secondary" style="padding:8px 20px;border:0.5px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:14px;color:var(--fg-muted);transition:var(--transition);background:transparent;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg-muted)'" onclick="editBio()">编辑简介</button></div>` : ""}
       `;
 
@@ -7135,7 +7574,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function setWeatherManual(m) {
       if (m === "auto") { localStorage.removeItem("weather-manual"); if (typeof Weather !== "undefined") Weather.syncToTheme(); return; }
       localStorage.setItem("weather-manual", m);
-      if (typeof Weather !== "undefined") Weather.setMode(m, "测试 · " + ({ off:"关", rain:"雨", snow:"雪", fog:"雾", stars:"星空", sun:"晴" })[m] || m);
+      if (typeof Weather !== "undefined") Weather.setMode(m, "测试 · " + ({ off:"关", rain:"雨", snow:"雪", fog:"雾", stars:"星空", sun:"晴", cloud:"多云" })[m] || m);
     }
 
     // 天气状态药丸点击切换：开↔关（关时记住之前的模式以便恢复）
@@ -7286,6 +7725,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       let lastBase = null;   // 最近一次真实天气的基础模式（rain/snow/fog/sun）
       let raf = null;
       let particles = [];
+      let scene = null;   // 晴/多云模式的场景状态（云、飞鸟等）
       let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
       function resize() {
@@ -7298,6 +7738,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
       function buildParticles() {
         particles = [];
+        scene = { clouds: [], birds: null, birdTimer: 6 + Math.random() * 10 };
         const W = window.innerWidth, H = window.innerHeight;
         if (mode === "rain") {
           // 毫毛细雨：发丝细、长条、低透明度；统一风向（可被吹斜，但不各自乱游）
@@ -7350,21 +7791,217 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             });
           }
         } else if (mode === "sun") {
-          const n = Math.floor(W / 14);
+          // 暖色光尘（稀疏、清晰的小微光，不堆成雾）
+          const n = Math.floor(W / 42);
           for (let i = 0; i < n; i++) {
             particles.push({
               x: Math.random() * W, y: Math.random() * H,
-              r: Math.random() * 1.6 + 0.6,
-              vy: -0.15 - Math.random() * 0.35,
+              r: Math.random() * 1.1 + 0.4,
+              vy: -0.1 - Math.random() * 0.3,
               sway: Math.random() * Math.PI * 2,
-              swSp: 0.01 + Math.random() * 0.02,
-              o: 0.25 + Math.random() * 0.4
+              swSp: 0.008 + Math.random() * 0.02,
+              o: 0.22 + Math.random() * 0.30
             });
           }
+          // 薄纱状卷云（cirrus）：高空飘带，稀疏
+          for (let i = 0; i < 2; i++) {
+            scene.clouds.push({
+              type: "cirrus",
+              x: Math.random() * W,
+              y: H * (0.08 + 0.14 * i) + Math.random() * 24,
+              scale: 0.8 + Math.random() * 0.6,
+              speed: 10 + Math.random() * 14,
+              alpha: 0.12 + Math.random() * 0.10
+            });
+          }
+        } else if (mode === "cloud") {
+          // 体积积云（cumulus）：阴天/多云 → 稀疏，仅 2–3 朵缓慢飘移
+          const n = 2 + Math.floor(Math.random() * 2);
+          for (let i = 0; i < n; i++) scene.clouds.push(makeCumulus(W, H, i, n));
         }
       }
 
-      function frame() {
+      // ===== 晴/多云电影级绘制工具（仅用细节元素烘托氛围，不画天空）=====
+      function drawSun(W, H, time) {
+        const sx = W * 0.80, sy = H * 0.16;
+        const coreR = Math.max(26, Math.min(W, H) * 0.045);
+        // 柔光晕（紧致清晰，非大摊模糊）
+        const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, coreR * 3.4);
+        halo.addColorStop(0, "rgba(255,250,235,0.98)");
+        halo.addColorStop(0.22, "rgba(255,240,200,0.55)");
+        halo.addColorStop(0.6, "rgba(255,232,185,0.14)");
+        halo.addColorStop(1, "rgba(255,232,185,0)");
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(sx, sy, coreR * 3.4, 0, Math.PI * 2); ctx.fill();
+        // 日芯
+        const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, coreR);
+        core.addColorStop(0, "rgba(255,255,250,1)");
+        core.addColorStop(0.7, "rgba(255,246,214,0.95)");
+        core.addColorStop(1, "rgba(255,236,180,0)");
+        ctx.fillStyle = core;
+        ctx.beginPath(); ctx.arc(sx, sy, coreR, 0, Math.PI * 2); ctx.fill();
+        // 动态太阳光线（柔和放射，缓慢旋转）
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(time * 0.02);
+        const rays = 12;
+        for (let i = 0; i < rays; i++) {
+          ctx.rotate((Math.PI * 2) / rays);
+          const rg = ctx.createLinearGradient(0, 0, coreR * 7, 0);
+          rg.addColorStop(0, "rgba(255,244,210,0.10)");
+          rg.addColorStop(1, "rgba(255,244,210,0)");
+          ctx.fillStyle = rg;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(coreR * 7, -coreR * 0.5);
+          ctx.lineTo(coreR * 7, coreR * 0.5);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+        return { sx, sy };
+      }
+      function drawLensFlares(W, H, time, sun) {
+        const cx = W * 0.5, cy = H * 0.5;
+        const dx = cx - sun.sx, dy = cy - sun.sy;
+        const drift = Math.sin(time * 0.15) * 0.06;   // 镜头光晕缓慢偏移
+        const flares = [
+          { k: 0.42, r: 26, a: 0.20, col: "255,242,205" },
+          { k: 0.74, r: 30, a: 0.12, col: "255,214,180" }
+        ];
+        for (const f of flares) {
+          const x = sun.sx + dx * (f.k + drift);
+          const y = sun.sy + dy * (f.k + drift);
+          const g = ctx.createRadialGradient(x, y, 0, x, y, f.r);
+          g.addColorStop(0, `rgba(${f.col},${f.a})`);
+          g.addColorStop(1, `rgba(${f.col},0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(x, y, f.r, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      function drawCirrus(c) {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.globalAlpha = c.alpha;
+        const w = 360 * c.scale, h = 26 * c.scale;
+        const g = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+        g.addColorStop(0, "rgba(255,255,255,0)");
+        g.addColorStop(0.5, "rgba(255,255,255,0.9)");
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        for (let k = -1; k <= 1; k++) {       // 几条错位细椭圆 → 羽状卷云
+          ctx.save();
+          ctx.translate(0, k * 8);
+          ctx.scale(1, 0.5);
+          ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+      function drawHeatHaze(W, H, time) {
+        const y0 = H * 0.88, bh = H * 0.10;     // 地平线附近热浪微闪（极淡）
+        ctx.save();
+        ctx.globalAlpha = 0.03 + 0.02 * Math.sin(time * 1.5);
+        const g = ctx.createLinearGradient(0, y0, 0, y0 + bh);
+        g.addColorStop(0, "rgba(255,240,210,0)");
+        g.addColorStop(0.5, "rgba(255,240,210,0.5)");
+        g.addColorStop(1, "rgba(255,240,210,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, y0, W, bh);
+        ctx.restore();
+      }
+      function updateBirds(W, H, dt, time) {
+        if (!scene.birds) {                     // 远处偶尔有飞鸟滑翔
+          scene.birdTimer -= dt;
+          if (scene.birdTimer <= 0) {
+            const dir = Math.random() < 0.5 ? 1 : -1;
+            scene.birds = {
+              x: dir > 0 ? -40 : W + 40,
+              y: H * (0.12 + Math.random() * 0.22),
+              vx: dir * (40 + Math.random() * 30),
+              count: 2 + Math.floor(Math.random() * 3),
+              spacing: 16 + Math.random() * 10,
+              phase: Math.random() * 10,
+              sp: 2 + Math.random() * 2,
+              t: 0
+            };
+          }
+          return;
+        }
+        const b = scene.birds;
+        b.t += dt; b.x += b.vx * dt; b.y += Math.sin(b.t * b.sp + b.phase) * 8 * dt * 4;
+        if ((b.vx > 0 && b.x > W + 80) || (b.vx < 0 && b.x < -80)) {
+          scene.birds = null; scene.birdTimer = 14 + Math.random() * 16; return;
+        }
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = "rgba(40,46,60,0.8)";
+        ctx.lineWidth = 1.6;
+        for (let i = 0; i < b.count; i++) {
+          const bx = b.x - i * b.spacing * Math.sign(b.vx);
+          const by = b.y + i * 6 + Math.sin(b.t * 3 + i) * 3;
+          const flap = Math.sin(b.t * 8 + i) * 4;
+          ctx.beginPath();
+          ctx.moveTo(bx - 7, by + flap);
+          ctx.quadraticCurveTo(bx, by - 5, bx + 7, by + flap);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      function makeCumulus(W, H, i, n) {
+        // 页面坐标：集中在顶部波段，下滚随页面滚走（不钉视口）
+        const baseY = H * (0.05 + 0.26 * (n > 1 ? i / (n - 1) : 0.4));
+        const blobs = [];
+        const nb = 6 + Math.floor(Math.random() * 3);
+        for (let b = 0; b < nb; b++) {
+          blobs.push({
+            dx: (Math.random() - 0.5) * 220,
+            dy: (Math.random() - 0.5) * 46 - 6,
+            r: 58 + Math.random() * 74,
+            a: 0.55 + Math.random() * 0.4,
+            ph: Math.random() * Math.PI * 2,
+            sw: 0.12 + Math.random() * 0.22      // 形变速度
+          });
+        }
+        return {
+          x: Math.random() * W, y: baseY,
+          scale: 0.7 + Math.random() * 0.9,
+          speed: 9 + Math.random() * 13,         // 缓慢飘移
+          blobs,
+          alpha: 0.42 + Math.random() * 0.22
+        };
+      }
+      function drawCumulus(c, time, sy) {
+        ctx.save();
+        ctx.translate(c.x, sy);
+        ctx.scale(c.scale, c.scale);
+        ctx.globalAlpha = c.alpha;
+        // 暗部（云底阴影）→ 体积感
+        for (const b of c.blobs) {
+          const breathe = 1 + 0.12 * Math.sin(time * b.sw + b.ph);
+          const r = b.r * breathe;
+          const g = ctx.createRadialGradient(b.dx, b.dy + r * 0.22, 0, b.dx, b.dy + r * 0.22, r);
+          g.addColorStop(0, `rgba(142,152,170,${b.a * 0.5})`);
+          g.addColorStop(1, "rgba(142,152,170,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(b.dx, b.dy + r * 0.22, r, 0, Math.PI * 2); ctx.fill();
+        }
+        // 亮部（云体，顶部更亮）
+        for (const b of c.blobs) {
+          const breathe = 1 + 0.12 * Math.sin(time * b.sw + b.ph);
+          const r = b.r * breathe;
+          const g = ctx.createRadialGradient(b.dx, b.dy - r * 0.22, 0, b.dx, b.dy, r);
+          g.addColorStop(0, `rgba(255,255,255,${b.a})`);
+          g.addColorStop(0.55, `rgba(243,247,252,${b.a * 0.72})`);
+          g.addColorStop(1, "rgba(228,234,244,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(b.dx, b.dy, r, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+      function frame(ts) {
+        const now = ts || performance.now();
+        const dt = Math.min(0.05, (now - (frame._last || now)) / 1000);
+        frame._last = now;
         const W = window.innerWidth, H = window.innerHeight;
         ctx.clearRect(0, 0, W, H);
         if (mode === "rain") {
@@ -7422,6 +8059,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           }
           ctx.globalAlpha = 1;
         } else if (mode === "sun") {
+          const time = now / 1000;
+          const sun = drawSun(W, H, time);
+          drawLensFlares(W, H, time, sun);
+          for (const c of scene.clouds) {
+            c.x += c.speed * dt;
+            if (c.x - 260 > W) c.x = -260;
+            drawCirrus(c);
+          }
+          drawHeatHaze(W, H, time);
+          updateBirds(W, H, dt, time);
           for (const p of particles) {
             p.sway += p.swSp;
             p.y += p.vy;
@@ -7430,8 +8077,19 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             ctx.globalAlpha = p.o;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(255,238,180,1)";
+            ctx.fillStyle = "rgba(255,240,190,1)";
             ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        } else if (mode === "cloud") {
+          const time = now / 1000;
+          const scrollY = window.scrollY || window.pageYOffset || 0;
+          for (const c of scene.clouds) {
+            c.x += c.speed * dt;
+            if (c.x - 320 * c.scale > W) c.x = -320 * c.scale;
+            const sy = c.y - scrollY;                 // 锚定页面顶端，下滚随页面滚走
+            if (sy + 320 * c.scale < 0 || sy - 320 * c.scale > H) continue;
+            drawCumulus(c, time, sy);
           }
           ctx.globalAlpha = 1;
         }
@@ -7448,7 +8106,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         mode = m;
         root.className = "weather-" + m;
         stop();
-        if (["rain","stars","sun","snow","fog"].includes(m)) {
+        if (["rain","stars","sun","snow","fog","cloud"].includes(m)) {
           resize(); buildParticles(); frame();
         }
         const dot = statusEl.querySelector(".ws-dot");
@@ -7458,7 +8116,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           snow:  ["#dfe7f5", "当下 · 雪"],
           fog:   ["#cfd6e0", "当下 · 雾"],
           stars: ["#9fb4ff", "当下 · 星空"],
-          sun:   ["#f6c453", "当下 · 晴"]
+          sun:   ["#f6c453", "当下 · 晴"],
+          cloud: ["#cfe0f2", "当下 · 多云"]
         }[m] || ["#bbb", "天气动效关"];
         if (dot) dot.style.background = info[0];
         if (statusText) statusText.textContent = label || info[1];
@@ -7473,7 +8132,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       function weatherLabel(code, isDay) {
         if (code === 0) return isDay ? "晴" : "晴朗夜";
         if (code <= 2) return isDay ? "晴间多云" : "少云夜";
-        if (code === 3) return "阴";
+        if (code === 3) return "多云";
         if (code === 45 || code === 48) return "雾";
         if (code >= 51 && code <= 57) return "毛毛雨";
         if (code >= 61 && code <= 67) return "雨";
@@ -7485,15 +8144,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
       // 基础模式：只由真实天气决定，不区分昼夜
       function weatherMode(code) {
-        if (code <= 3) return "sun";                            // 晴/少云/阴 → 晴（昼夜由主题决定）
-        if (code === 45 || code === 48) return "fog";           // 雾 → 雾气动效
-        if ([71,73,75,77,85,86].includes(code)) return "snow";  // 雪 → 飘雪动效
-        return "rain";                                          // 其余（雨/阵雨/毛毛雨/雷阵雨）均为雨幕
+        if (code === 0) return "sun";                             // 晴 → 晴天电影感
+        if (code <= 3) return "cloud";                            // 少云/多云/阴 → 体积云动效
+        if (code === 45 || code === 48) return "fog";             // 雾 → 雾气动效
+        if ([71,73,75,77,85,86].includes(code)) return "snow";    // 雪 → 飘雪动效
+        return "rain";                                            // 其余（雨/阵雨/毛毛雨/雷阵雨）均为雨幕
       }
-      // 显示模式：雨/雪/雾 优先级最高（日夜间都按真实天气走）；仅「夜间模式 + 非雨」才星空
+      // 显示模式：雨/雪/雾 优先级最高（日夜间都按真实天气走）；晴/多云：夜间星空，日间对应动效
       function resolveMode(base) {
-        if (base !== "sun") return base;          // 雨/雪/雾 不受主题影响
-        return isDark() ? "stars" : "sun";        // 非雨：夜间星空，日间晴天
+        if (base === "rain" || base === "snow" || base === "fog") return base;
+        return isDark() ? "stars" : base;
       }
 
       // 真实天气：每次访问请求定位授权 → open-meteo（免费、无需 key、支持 CORS）
@@ -7546,7 +8206,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       function init() {
         resize();
         window.addEventListener("resize", () => {
-          if (["rain","stars","sun","snow","fog"].includes(mode)) { resize(); buildParticles(); }
+          if (["rain","stars","sun","snow","fog","cloud"].includes(mode)) { resize(); buildParticles(); }
         });
         const manual = localStorage.getItem("weather-manual");
         if (manual) {
@@ -7575,6 +8235,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       initFloatingQuotes();
       renderNavQuote();
       Weather.init();
+      // 启动即预拉取 GitHub Issues（文章跨设备），拉到后刷新列表
+      if (GH_CMS.enabled) {
+        fetchPostsFromGitHub().then(list => {
+          if (list.length) { GH_POSTS = list; if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute(); }
+        });
+      }
     });
 
     if (typeof marked === "undefined") {
