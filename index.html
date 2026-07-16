@@ -809,6 +809,49 @@
       border-radius: 999px;
       color: var(--accent);
     }
+    /* 列表模式「最新」徽章（3 天内更新，非精选） */
+    .latest-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 8px;
+      background: color-mix(in srgb, #2e9e5b 14%, transparent);
+      border: 0.5px solid color-mix(in srgb, #2e9e5b 36%, transparent);
+      border-radius: 999px;
+      color: #2e9e5b;
+    }
+    /* 卡片模式徽章（精选 / 最新） */
+    .featured-card .card-badge {
+      display: inline-block;
+      font-size: 11px;
+      margin: 2px 0 6px;
+      padding: 1px 8px;
+      border-radius: 999px;
+    }
+    .featured-card .card-badge.latest-badge {
+      background: color-mix(in srgb, #2e9e5b 14%, transparent);
+      border: 0.5px solid color-mix(in srgb, #2e9e5b 36%, transparent);
+      color: #2e9e5b;
+    }
+    /* 编辑器内同步状态提示 */
+    .sync-warning {
+      background: color-mix(in srgb, #e0a800 16%, transparent);
+      border: 0.5px solid color-mix(in srgb, #e0a800 45%, transparent);
+      color: #b58600;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+    .sync-ok {
+      background: color-mix(in srgb, #2e9e5b 14%, transparent);
+      border: 0.5px solid color-mix(in srgb, #2e9e5b 36%, transparent);
+      color: #2e9e5b;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
     .featured-card.is-featured {
       border-color: var(--accent);
       background: color-mix(in srgb, var(--accent) 7%, var(--bg, #ffffff));
@@ -5572,6 +5615,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       modal.innerHTML = `
         <h2>${post ? "编辑文章" : "写新文章"}</h2>
         <div id="autosave-note" class="autosave-note" style="display:none;">📝 已恢复自动保存的内容（手动保存前不会生效）</div>
+        ${!localStorage.getItem(GH_TOKEN_KEY) ? `<div class="sync-warning">⚠️ 尚未配置 GitHub Token：本文保存后<strong>仅本机可见</strong>，手机端和其他人都看不到。请到「设置 → GitHub 同步」粘贴 Token——配置后，每次保存都会自动同步，所有人即时可见。</div>` : `<div class="sync-ok">✅ 已配置 GitHub 同步：保存后文章会自动发布到云端，手机端与其他访客立即可见。</div>`}
         <div class="field">
           <label>标题</label>
           <input type="text" id="edit-title" value="${post ? post.title.replace(/"/g, '&quot;') : ''}" placeholder="文章标题">
@@ -6345,6 +6389,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       return Array.from(catMap.entries()).map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count);
     }
 
+    // 是否在「最新」时效期内（默认 3 天）：优先按 updatedAt，缺则退回 date
+    function isRecentlyUpdated(post, days = 3) {
+      const u = post.updatedAt || post.date;
+      if (!u) return false;
+      const d = new Date(u + "T00:00:00");
+      if (isNaN(d.getTime())) return false;
+      const diff = (Date.now() - d.getTime()) / 86400000;
+      return diff >= 0 && diff <= days;
+    }
+
     function getFilteredPosts() {
       let posts = [...getAllPosts()];
       if (currentFilter.featured) posts = posts.filter(p => p.pinned);
@@ -6360,8 +6414,15 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         );
       }
       return posts.sort((a, b) => {
-        const pa = a.pinned ? 1 : 0, pb = b.pinned ? 1 : 0;
-        if (pa !== pb) return pb - pa; // 精选置顶
+        // 三级排序：精选(置顶) > 最新(3天内更新) > 普通
+        const rank = p => p.pinned ? 2 : (isRecentlyUpdated(p, 3) ? 1 : 0);
+        const ra = rank(a), rb = rank(b);
+        if (ra !== rb) return rb - ra;
+        // 同组内排序：最新组按更新时间倒序，其余按日期
+        if (ra === 1) {
+          const ua = a.updatedAt || a.date || "", ub = b.updatedAt || b.date || "";
+          return ua < ub ? 1 : -1;
+        }
         return sortMode === "desc" ? (a.date < b.date ? 1 : -1) : (a.date > b.date ? 1 : -1);
       });
     }
@@ -6717,6 +6778,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <div class="featured-card reveal ${post.pinned ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
               <div class="post-meta"><time>${formatDate(post.date)}</time><span>·</span>${post.category || "未分类"}<span>·</span><span>${post.tags.length} 个标签</span></div>
               <h3>${escapeHtml(post.title)}</h3>
+              ${post.pinned ? `<div class="card-badge pin-badge">★ 精选</div>` : (isRecentlyUpdated(post, 3) ? `<div class="card-badge latest-badge">● 最新</div>` : "")}
               <p class="excerpt">${displayExcerpt(post)}</p>
               <div class="post-tags">${post.tags.slice(0,4).map(t => `<span class="post-tag">#${t}</span>`).join("")}${post.tags.length > 4 ? `<span class="post-tag">+${post.tags.length-4}</span>` : ""}</div>
               ${isAdmin ? `<div style="margin-top:10px;"><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${post.pinned ? '✕ 取消精选' : '★ 设为精选'}</button></div>` : ""}
@@ -6732,7 +6794,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       // 在默认视图下（无筛选/搜索），精选置顶并与普通文章之间加分隔线
       const isDefaultView = !currentSearch && !currentFilter.category && !currentFilter.tag && !currentFilter.featured;
       const featuredPosts = isDefaultView ? all.filter(p => p.pinned) : [];
-      const regularPosts = isDefaultView ? all.filter(p => !p.pinned) : all;
+      const latestPosts = isDefaultView ? all.filter(p => !p.pinned && isRecentlyUpdated(p, 3)) : [];
+      const regularPosts = isDefaultView ? all.filter(p => !p.pinned && !isRecentlyUpdated(p, 3)) : all;
 
       let listHTML = "";
       if (featuredPosts.length) {
@@ -6745,6 +6808,31 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
               ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
               ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${isFeatured(post.slug) ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
+            </div>
+            <h3>${highlight(post.title, currentSearch)}</h3>
+            ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
+            <p class="excerpt">${displayExcerpt(post)}</p>
+            <div class="post-tags">
+              ${post.tags.map(t => `<span class="post-tag" onclick="event.stopPropagation();currentFilter.tag='${t}';filterOpen=true;navigate('home');">#${t}</span>`).join("")}
+            </div>
+            ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
+          </div>
+        `).join("");
+        if (latestPosts.length || regularPosts.length) {
+          listHTML += `<div class="divider"><span>· · ·</span></div>`;
+        }
+      }
+      // 「最新」组：3 天内更新、非精选，置于精选之后、普通之前，标「最新」
+      if (latestPosts.length) {
+        listHTML += latestPosts.map((post, i) => `
+          <div class="post-card reveal" style="transition-delay:${Math.min((featuredPosts.length + i) * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
+            <div class="post-meta">
+              <time>${formatDate(post.date)}</time><span>·</span>
+              ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
+              <span>${post.tags.length} 个标签</span>
+              <span class="latest-badge">● 最新</span>
+              ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
+              ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
             </div>
             <h3>${highlight(post.title, currentSearch)}</h3>
             ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
