@@ -6397,8 +6397,19 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       if (!raw) return false;
       const { y, t } = JSON.parse(raw);
       if (Date.now() - t > SCROLL_TTL) { sessionStorage.removeItem("scroll_" + key); return false; }
-      setTimeout(() => window.scrollTo({ top: y, behavior: "instant" }), 0);
-      sessionStorage.removeItem("scroll_" + key);
+      // 首页等内容可能为异步渲染（GitHub Issues 拉取），滚动高度需等待就绪，故多次尝试定位
+      let tries = 0;
+      const tryScroll = () => {
+        const docH = document.documentElement.scrollHeight - window.innerHeight;
+        if (window.scrollY === y || docH >= y || tries > 8) {
+          window.scrollTo({ top: y, behavior: "instant" });
+          if (tries > 8) sessionStorage.removeItem("scroll_" + key); // 多次失败则放弃，避免陈旧
+          return;
+        }
+        tries++;
+        setTimeout(tryScroll, 60);
+      };
+      tryScroll();
       return true;
     }
 
@@ -6458,16 +6469,15 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       } else {
         window.location.hash = h;
       }
-
-      // 记录历史
-      if (!replace) pushRouteHistory(currentRoute, currentHash.split("/")[1]);
+      // 注：不再维护自定义 routeHistory 栈，返回统一走浏览器真实历史（history.back），
+      // 避免自定义栈与浏览器历史脱节导致「返回到错误页面」。
     }
 
     function goBack() {
-      // 如果有历史记录，智能返回；否则回首页
-      const prev = popRouteHistory();
-      if (prev && prev.route) {
-        navigate(prev.route, prev.param, { replace: true });
+      // 直接复用浏览器真实历史（与浏览器返回键行为一致），避免自定义栈脱节导致返回错页。
+      // 仅当没有任何可回退的历史时（如直接深链进入），才回首页。
+      if (window.history.length > 1) {
+        window.history.back();
       } else {
         navigate("home", null, { replace: true });
       }
