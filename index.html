@@ -5029,16 +5029,29 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 - github-deploy/：同步副本，供 GitHub Pages 部署。
 
 ## 编辑与发布
-1. 管理员登录（账号与密码均为「防护」）。
-2. 进入编辑界面新建 / 修改文章（Markdown 富文本）。
-3. 保存写入 localStorage，本机立即生效。
-4. 同步 index.html 到 github-deploy/。
-5. 部署：CloudStudio 预览，或本地 git push origin main 触发 GitHub Pages。
+1. 管理员登录（密码「zhuer2026」，账号栏留空即可）。
+2. 进入编辑界面新建 / 修改文章（Markdown 富文本，支持左/居中/两端对齐、缩进、行距）。
+3. 保存：有 GitHub Token 时自动同步到仓库 Issues（跨设备可见）；否则存本机 localStorage。
+4. 同步 index.html 到 github-deploy/，本地 git push origin main 触发 GitHub Pages。
+
+## 评论后端部署（Twikoo + 腾讯云开发 CloudBase，零成本）
+游客填昵称即可留言，评论存云端、跨设备互相可见。envId 由管理员在「设置 → 评论后端」填写，仅存本机。
+1. 注册/登录腾讯云：https://cloud.tencent.com （免费，可能需实名）。
+2. 进云开发控制台：https://console.cloud.tencent.com/tcb （之前的「活动结束」只是过期推广页，此为真控制台）。
+3. 新建环境：按量计费（含免费额度，个人站用不完）→ 地域选上海/广州 → 模板「空」→ 创建，等初始化。
+4. 部署 Twikoo 云函数（二选一）：
+   - 一键：https://twikoo.js.org/quick-start.html 的「部署到云开发」按钮 → 授权 → 自动建好 twikoo 函数。
+   - 手动：环境 → 云函数 → 新建 → 函数名 twikoo、Nodejs 16/18、空白函数 → index.js 写 \`exports.main = require('twikoo-func').main\`，package.json 写 \`{"dependencies":{"twikoo-func":"1.7.14"}}\` → 保存并安装依赖。
+5. 登录授权 → 开启「匿名登录」。
+6. 安全配置 → WEB 安全域名 → 添加 \`mmax423.github.io\` 与 CloudStudio 预览域名。
+7. 环境总览 → 复制「环境 ID」（envId）。
+8. 站点 → 登录管理 → 设置 → 评论后端（Twikoo）填 envId → 保存并启用。
 
 ## 后端与互动（现状）
 - 评论：Twikoo（腾讯云开发 CloudBase），游客填昵称即可留言，跨设备互相可见；envId 由管理员在「设置 → 评论后端」填写，仅存本机。
+- 文章同步：GitHub Issues 当 CMS（公开 API 跨设备可读；管理员 Token 写，仅存本机）。
 - 点赞 / 浏览量：localStorage（全站 PV 另接不蒜子）。
-- 管理员：本地密码「防护」。
+- 管理员：本地密码「zhuer2026」。
 
 ## 天气动效
 - 来源：open-meteo 实时天气（按访客定位）。
@@ -5046,12 +5059,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 - 多云云朵锚定页面顶端，向下滚动随页面离开视口。
 
 ## 已知问题
-- GitHub Pages 未推送（需本地 push）。
-- 评论后端未启用（giscus 待 Discussions + categoryId）。
-- 管理员密码明文硬编码于公开 HTML，仅作编辑开关。
+- 管理员密码明文硬编码于公开 HTML，仅作编辑开关（如需更强保护可改为服务端校验）。
+- Twikoo 评论管理（删评）需额外配置自定义登录私钥，见 Twikoo 文档。
 
 ## 后续路线
-- 分发层：OG 分享卡片 + 评论后端。
+- 分发层：OG 分享卡片 + 评论后端（进行中）。
 - 可发现层：独立静态页 + SEO。
 - 内容资产层：专栏 / 系列 / 作者手记。
 - 探索：接入微信等外部平台。`;
