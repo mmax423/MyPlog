@@ -5162,8 +5162,26 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               el: "#tcomment",
               path: "post/" + slug,   // 按文章 slug 区分评论串，避免 hash 路由下混在一起
               lang: "zh-CN",
-              requiredMeta: ['nick']  // 只收集昵称，不显示邮箱/网址字段
             });
+            // Twikoo 渲染完成后移除邮箱/网址字段（仅保留昵称）
+            // requiredMeta 在 1.6.x 不可靠，用 DOM 操作确保只留昵称
+            setTimeout(function stripCommentFields() {
+              var container = document.querySelector("#tcomment");
+              if (!container) return;
+              var rows = container.querySelectorAll(".tk-row, .el-form-item, [class*=input]");
+              rows.forEach(function(row) {
+                var t = (row.textContent || "").trim();
+                if ((t.indexOf("邮箱") !== -1 && t.indexOf("昵称") === -1) ||
+                    (t.indexOf("网址") !== -1 && t.indexOf("昵称") === -1)) {
+                  row.style.display = "none";
+                }
+              });
+              [".tk-row[data-name=mail]", ".tk-row[data-name=link]",
+               ".tk-input-mail", ".tk-input-link"].forEach(function(sel) {
+                try { container.querySelectorAll(sel).forEach(function(el) { el.style.display = "none"; }); }
+                catch(e) {}
+              });
+            }, 800);
           } catch (e) { console.error("Twikoo init failed", e); }
         } else if (tries++ < 25) {
           setTimeout(tryInit, 200);  // SDK 尚未加载完，轮询等待
