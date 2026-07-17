@@ -5055,7 +5055,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 - 后端升级：采用 **GitHub Issues 当 CMS**，文章发布后自动同步到仓库 Issue，手机/任意设备刷新即可看到（解决 localStorage 不跨设备问题）。
 - 评论系统：**Twikoo（Netlify + MongoDB Atlas）**，游客填昵称即可留言，评论跨设备互相可见。服务端地址由管理员在「设置 → 评论后端」填写，仅存本机。
 - 编辑器增强：新增左/居中/两端对齐、缩进/悬挂、行距下拉；修复 contenteditable 残留居中导致段落偏移。
-- 增加管理员登录功能（本地密码校验）。
+- 增加管理员登录功能。
 - 天气动效二次迭代：去除画出的天空渐变、收紧模糊光带、多云云朵锚定页面顶端（下滚随页面离开）、云体更写实。
 
 ## 2026-07-15
@@ -5070,34 +5070,21 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 - 部署到 GitHub Pages（mmax423.github.io/MyPlog）。`;
 
     // 关于页「运转手册」默认内容（管理员可在关于页编辑覆盖）
-    const DEFAULT_HANDBOOK = `## 文件结构
-- index.html：站点权威源（所有改动在此）。
-- build_ssg.js：从 index.html 提取 POSTS 生成 posts/<slug>.html。
-- github-deploy/：同步副本，供 GitHub Pages 部署。
-
-## 编辑与发布
-1. 管理员登录（本地密码校验，账号栏留空即可）。
-2. 进入编辑界面新建 / 修改文章（Markdown 富文本，支持左/居中/两端对齐、缩进、行距）。
-3. 保存：有 GitHub Token 时自动同步到仓库 Issues（跨设备可见）；否则存本机 localStorage。
-4. 同步 index.html 到 github-deploy/，本地 git push origin main 触发 GitHub Pages。
-
-## 评论后端部署
-通过 **Netlify + MongoDB Atlas** 部署了 **Twikoo 评论后端**，游客填昵称即可留言，评论存云端、跨设备互相可见。
+    const DEFAULT_HANDBOOK = `## 评论后端
+通过 **Netlify + MongoDB Atlas** 部署了 **Twikoo 评论后端**，游客填昵称即可留言，评论跨设备互相可见。
 
 ## 后端与互动（现状）
-- 评论：Twikoo（Netlify + MongoDB Atlas），游客填昵称即可留言，跨设备互相可见；服务端地址由管理员在「设置 → 评论后端」填写，仅存本机。
-- 文章同步：GitHub Issues 当 CMS（公开 API 跨设备可读；管理员 Token 写，仅存本机）。
-- 点赞 / 浏览量：localStorage（全站 PV 另接不蒜子）。
-- 管理员：已启用本地密码登录。
+- 评论：Twikoo（Netlify + MongoDB Atlas），游客填昵称即可留言，跨设备互相可见。
+- 文章同步：GitHub Issues 当 CMS，跨设备可读可写。
+- 点赞 / 浏览量：localStorage 存储（全站访问量接不蒜子）。
+- 已启用管理员登录。
 
 ## 天气动效
-- 来源：open-meteo 实时天气（按访客定位）。
-- 模式：晴 / 多云 / 雾 / 雪 / 雨 / 星空。
-- 多云云朵锚定页面顶端，向下滚动随页面离开视口。
+实现随真实天气变化的页面动效（晴 / 多云 / 雾 / 雪 / 雨 / 星空）。
 
 ## 已知问题
-- 管理员密码明文硬编码于公开 HTML，仅作编辑开关（如需更强保护可改为服务端校验）。
-- Twikoo 评论管理（删评）需额外配置自定义登录私钥，见 Twikoo 文档。
+- 管理员密码硬编码于公开 HTML，仅作编辑开关。
+- Twikoo 评论管理（删评）需额外配置，待补充。
 
 ## 后续路线
 - 分发层：OG 分享卡片 + 评论后端（进行中）。
