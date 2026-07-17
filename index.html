@@ -5182,11 +5182,13 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     // ===== Twikoo 评论后端（Netlify + MongoDB Atlas）=====
     // 游客填昵称即可留言，评论存云端、跨设备互相可见（解决 localStorage 各看各的痛点）。
-    // envId 来自「设置 → 评论后端」，仅存本机 localStorage，不硬编码、不上传。
+    // 默认地址内置：所有访客打开即可评论，无需任何配置。
+    // 管理员可在「设置 → 评论后端」覆盖此默认值。
     const TWIKOO_KEY = "zhuer_twikoo_env";
+    const TWIKOO_DEFAULT = "https://mongodbburi.netlify.app/.netlify/functions/twikoo";
     const TWIKOO_CONFIG = {
-      enabled: false,
-      get envId() { return (localStorage.getItem(TWIKOO_KEY) || "").trim(); }
+      get enabled() { return !!(localStorage.getItem(TWIKOO_KEY) || TWIKOO_DEFAULT).trim(); },
+      get envId() { return (localStorage.getItem(TWIKOO_KEY) || TWIKOO_DEFAULT).trim(); }
     };
     let _walineLoaded = false, _walineClient = null;
     (function loadWalineClient() {
