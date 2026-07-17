@@ -947,7 +947,7 @@
     .markdown p {
       margin-top: 16px;
       margin-bottom: 16px;
-      text-align: left;          /* 防止 contenteditable 残留居中样式导致段落偏移 */
+      text-align: left !important;  /* 强制左对齐，覆盖 contenteditable 残留的行内居中样式 */
     }
     .markdown ul, .markdown ol {
       margin-top: 16px;
@@ -6450,7 +6450,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         return content.replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
       }
       const rawHtml = marked.parse(content);
-      return DOMPurify.sanitize(rawHtml);
+      // 清理编辑器残留的行内对齐样式（contenteditable 注入的 text-align:center 等）
+      const cleanHtml = rawHtml.replace(/style="[^"]*text-align\s*:\s*(center|right|justify)[^"]*"/gi, '');
+      return DOMPurify.sanitize(cleanHtml);
     }
 
     // 统计文章内图片数量（base64 或外链）
