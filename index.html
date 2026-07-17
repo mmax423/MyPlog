@@ -5052,7 +5052,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 - 后端升级：采用 **GitHub Issues 当 CMS**，文章发布后自动同步到仓库 Issue，手机/任意设备刷新即可看到（解决 localStorage 不跨设备问题）。
 - 评论系统：**Twikoo（Netlify + MongoDB Atlas）**，游客填昵称即可留言，评论跨设备互相可见。服务端地址由管理员在「设置 → 评论后端」填写，仅存本机。
 - 编辑器增强：新增左/居中/两端对齐、缩进/悬挂、行距下拉；修复 contenteditable 残留居中导致段落偏移。
-- 管理员登录改为「账号/密码一致」校验，密码为「防护」。
+- 增加管理员登录功能（本地密码校验）。
 - 天气动效二次迭代：去除画出的天空渐变、收紧模糊光带、多云云朵锚定页面顶端（下滚随页面离开）、云体更写实。
 
 ## 2026-07-15
@@ -5073,27 +5073,19 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 - github-deploy/：同步副本，供 GitHub Pages 部署。
 
 ## 编辑与发布
-1. 管理员登录（密码「zhuer2026」，账号栏留空即可）。
+1. 管理员登录（本地密码校验，账号栏留空即可）。
 2. 进入编辑界面新建 / 修改文章（Markdown 富文本，支持左/居中/两端对齐、缩进、行距）。
 3. 保存：有 GitHub Token 时自动同步到仓库 Issues（跨设备可见）；否则存本机 localStorage。
 4. 同步 index.html 到 github-deploy/，本地 git push origin main 触发 GitHub Pages。
 
-## 评论后端部署（Twikoo + Netlify + MongoDB Atlas，零成本）
-游客填昵称即可留言，评论存云端、跨设备互相可见。服务端地址由管理员在「设置 → 评论后端」填写，仅存本机。
-1. 注册 MongoDB Atlas：https://www.mongodb.com/atlas （免费套餐 512MB，个人站够用）→ 创建集群 → 选免费 tier → 地域选离你近的（如 Singapore / Tokyo）。
-2. 创建数据库用户：Database Access → Add User → 读写权限 → 记住用户名/密码。
-3. 网络白名单：Network Access → Allow Access from Anywhere（0.0.0.0/0）。
-4. 获取连接字符串：Connect → Drivers → 复制 URI（含用户名密码）。
-5. 注册 Netlify：https://www.netlify.com （免费）→ Fork https://imaegoo.github.io/twikoo-netlify 到你的 GitHub → 在 Netlify 导入该仓库。
-6. Netlify 环境变量设置：Site configuration → Environment variables → 添加 MONGODB_URI = 上一步的连接字符串 → 保存并重新部署。
-7. 获取 Twikoo 地址：Netlify Site URL + /.netlify/functions/twikoo（如 https://xxx.netlify.app/.netlify/functions/twikoo）。
-8. 站点 → 登录管理 → 设置 → 评论后端（Twikoo）填入上一步的完整地址 → 保存并启用。
+## 评论后端部署
+通过 **Netlify + MongoDB Atlas** 部署了 **Twikoo 评论后端**，游客填昵称即可留言，评论存云端、跨设备互相可见。
 
 ## 后端与互动（现状）
 - 评论：Twikoo（Netlify + MongoDB Atlas），游客填昵称即可留言，跨设备互相可见；服务端地址由管理员在「设置 → 评论后端」填写，仅存本机。
 - 文章同步：GitHub Issues 当 CMS（公开 API 跨设备可读；管理员 Token 写，仅存本机）。
 - 点赞 / 浏览量：localStorage（全站 PV 另接不蒜子）。
-- 管理员：本地密码「zhuer2026」。
+- 管理员：已启用本地密码登录。
 
 ## 天气动效
 - 来源：open-meteo 实时天气（按访客定位）。
