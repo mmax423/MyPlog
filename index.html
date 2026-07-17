@@ -1734,7 +1734,8 @@
     }
 
     /* 文章评论（Twikoo）精简：只留昵称(ID)一栏，隐藏邮箱与网址 */
-    .tk-input-mail, .tk-input-link { display: none !important; }
+    .tk-input-mail, .tk-input-link, .tk-row[data-name="mail"], .tk-row[data-name="link"] { display: none !important; }
+    #tcomment .el-textarea__inner { min-height: 120px; }
   </style>
 </head>
 <body>
@@ -5160,7 +5161,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               envId: TWIKOO_CONFIG.envId,
               el: "#tcomment",
               path: "post/" + slug,   // 按文章 slug 区分评论串，避免 hash 路由下混在一起
-              lang: "zh-CN"
+              lang: "zh-CN",
+              requiredMeta: ['nick']  // 只收集昵称，不显示邮箱/网址字段
             });
           } catch (e) { console.error("Twikoo init failed", e); }
         } else if (tries++ < 25) {
