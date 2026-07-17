@@ -1796,12 +1796,13 @@
   <script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
-  <!-- Twikoo 评论后端 SDK（本地托管；当前为完整版，待换 Netlify 精简版）。用 async 避免阻塞首屏渲染 -->
-  <script async src="twikoo.all.min.js"></script>
+  <!-- Twikoo 评论后端 SDK（Netlify 精简版，不含腾讯云 tcb）。用 async 不阻塞首屏 -->
+  <script async src="twikoo.min.js"></script>
   <!-- 真实全站访问量（跨设备，第三方不蒜子） -->
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
   <script>
-    marked.setOptions({ breaks: false, gfm: true });
+    // marked 可能还未加载（defer），安全调用；若未就绪则在 boot() 中重试
+    if (typeof marked !== "undefined") marked.setOptions({ breaks: false, gfm: true });
 
     // ===== 每日古诗古词名言 =====
     const DAILY_QUOTES = [
@@ -5084,8 +5085,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 3. 网络白名单：Network Access → Allow Access from Anywhere（0.0.0.0/0）。
 4. 获取连接字符串：Connect → Drivers → 复制 URI（含用户名密码）。
 5. 注册 Netlify：https://www.netlify.com （免费）→ Fork https://imaegoo.github.io/twikoo-netlify 到你的 GitHub → 在 Netlify 导入该仓库。
-6. Netlify 环境变量设置：Site configuration → Environment variables → 添加 `MONGODB_URI` = 上一步的连接字符串 → 保存并重新部署。
-7. 获取 Twikoo 地址：Netlify Site URL + `/.netlify/functions/twikoo`（如 \`https://xxx.netlify.app/.netlify/functions/twikoo\`）。
+6. Netlify 环境变量设置：Site configuration → Environment variables → 添加 MONGODB_URI = 上一步的连接字符串 → 保存并重新部署。
+7. 获取 Twikoo 地址：Netlify Site URL + /.netlify/functions/twikoo（如 https://xxx.netlify.app/.netlify/functions/twikoo）。
 8. 站点 → 登录管理 → 设置 → 评论后端（Twikoo）填入上一步的完整地址 → 保存并启用。
 
 ## 后端与互动（现状）
@@ -8328,6 +8329,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     function boot() {
       try {
+        // 配置已加载的库（defer 脚本可能此时已就绪）
+        if (typeof marked !== "undefined") marked.setOptions({ breaks: false, gfm: true });
         // 恢复主题
         if (localStorage.getItem("theme") === "dark") {
           document.body.classList.add("dark");
