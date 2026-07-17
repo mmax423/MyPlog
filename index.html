@@ -1792,11 +1792,12 @@
     <div class="modal" id="modal-content"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
-  <!-- Twikoo 评论后端 SDK（本地托管；完整版含tcb用于腾讯云开发，精简版用于 Vercel/CF Worker/Netlify 等非Tencent平台） -->
-  <script defer src="twikoo.all.min.js"></script>
+  <!-- 核心依赖：defer 不阻塞主脚本（首屏渲染不依赖这些库；marked 仅文章详情页需要） -->
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
+  <!-- Twikoo 评论后端 SDK（本地托管；当前为完整版，待换 Netlify 精简版）。用 async 避免阻塞首屏渲染 -->
+  <script async src="twikoo.all.min.js"></script>
   <!-- 真实全站访问量（跨设备，第三方不蒜子） -->
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
   <script>
@@ -5048,14 +5049,13 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     // 关于页「站点更新日志」默认内容（管理员可在关于页编辑覆盖）
     const DEFAULT_CHANGELOG = `## 2026-07-16
 - 后端升级：采用 **GitHub Issues 当 CMS**，文章发布后自动同步到仓库 Issue，手机/任意设备刷新即可看到（解决 localStorage 不跨设备问题）。
-- 评论系统确定采用 **Twikoo（腾讯云开发）**：游客填昵称即可留言，且所有人的评论跨设备互相可见（彻底替代 localStorage 单机评论）。envId 由管理员在「设置 → 评论后端」填写，仅存本机。
+- 评论系统：**Twikoo（Netlify + MongoDB Atlas）**，游客填昵称即可留言，评论跨设备互相可见。服务端地址由管理员在「设置 → 评论后端」填写，仅存本机。
 - 编辑器增强：新增左/居中/两端对齐、缩进/悬挂、行距下拉；修复 contenteditable 残留居中导致段落偏移。
 - 管理员登录改为「账号/密码一致」校验，密码为「防护」。
 - 天气动效二次迭代：去除画出的天空渐变、收紧模糊光带、多云云朵锚定页面顶端（下滚随页面离开）、云体更写实。
 
 ## 2026-07-15
 - 接入可插拔后端适配器（评论 / 点赞 / 访问统计走统一 Backend 接口）。
-- 因 LeanCloud 国内版停服，曾迁移至 Waline（Vercel + Neon）；后因其国内不可达而放弃，转 giscus。
 - 文章续读：按 slug 持久化阅读进度，首次从头、看过续读。
 - 精选统一为单一数据源 post.pinned；去重防止重复文章；精选置顶 + 精选集 + 访问统计。
 
@@ -5077,21 +5077,19 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 3. 保存：有 GitHub Token 时自动同步到仓库 Issues（跨设备可见）；否则存本机 localStorage。
 4. 同步 index.html 到 github-deploy/，本地 git push origin main 触发 GitHub Pages。
 
-## 评论后端部署（Twikoo + 腾讯云开发 CloudBase，零成本）
-游客填昵称即可留言，评论存云端、跨设备互相可见。envId 由管理员在「设置 → 评论后端」填写，仅存本机。
-1. 注册/登录腾讯云：https://cloud.tencent.com （免费，可能需实名）。
-2. 进云开发控制台：https://console.cloud.tencent.com/tcb （之前的「活动结束」只是过期推广页，此为真控制台）。
-3. 新建环境：按量计费（含免费额度，个人站用不完）→ 地域选上海/广州 → 模板「空」→ 创建，等初始化。
-4. 部署 Twikoo 云函数（二选一）：
-   - 一键：https://twikoo.js.org/quick-start.html 的「部署到云开发」按钮 → 授权 → 自动建好 twikoo 函数。
-   - 手动：环境 → 云函数 → 新建 → 函数名 twikoo、Nodejs 16/18、空白函数 → index.js 写 \`exports.main = require('twikoo-func').main\`，package.json 写 \`{"dependencies":{"twikoo-func":"1.7.14"}}\` → 保存并安装依赖。
-5. 登录授权 → 开启「匿名登录」。
-6. 安全配置 → WEB 安全域名 → 添加 \`mmax423.github.io\` 与 CloudStudio 预览域名。
-7. 环境总览 → 复制「环境 ID」（envId）。
-8. 站点 → 登录管理 → 设置 → 评论后端（Twikoo）填 envId → 保存并启用。
+## 评论后端部署（Twikoo + Netlify + MongoDB Atlas，零成本）
+游客填昵称即可留言，评论存云端、跨设备互相可见。服务端地址由管理员在「设置 → 评论后端」填写，仅存本机。
+1. 注册 MongoDB Atlas：https://www.mongodb.com/atlas （免费套餐 512MB，个人站够用）→ 创建集群 → 选免费 tier → 地域选离你近的（如 Singapore / Tokyo）。
+2. 创建数据库用户：Database Access → Add User → 读写权限 → 记住用户名/密码。
+3. 网络白名单：Network Access → Allow Access from Anywhere（0.0.0.0/0）。
+4. 获取连接字符串：Connect → Drivers → 复制 URI（含用户名密码）。
+5. 注册 Netlify：https://www.netlify.com （免费）→ Fork https://imaegoo.github.io/twikoo-netlify 到你的 GitHub → 在 Netlify 导入该仓库。
+6. Netlify 环境变量设置：Site configuration → Environment variables → 添加 `MONGODB_URI` = 上一步的连接字符串 → 保存并重新部署。
+7. 获取 Twikoo 地址：Netlify Site URL + `/.netlify/functions/twikoo`（如 \`https://xxx.netlify.app/.netlify/functions/twikoo\`）。
+8. 站点 → 登录管理 → 设置 → 评论后端（Twikoo）填入上一步的完整地址 → 保存并启用。
 
 ## 后端与互动（现状）
-- 评论：Twikoo（腾讯云开发 CloudBase），游客填昵称即可留言，跨设备互相可见；envId 由管理员在「设置 → 评论后端」填写，仅存本机。
+- 评论：Twikoo（Netlify + MongoDB Atlas），游客填昵称即可留言，跨设备互相可见；服务端地址由管理员在「设置 → 评论后端」填写，仅存本机。
 - 文章同步：GitHub Issues 当 CMS（公开 API 跨设备可读；管理员 Token 写，仅存本机）。
 - 点赞 / 浏览量：localStorage（全站 PV 另接不蒜子）。
 - 管理员：本地密码「zhuer2026」。
@@ -5180,14 +5178,13 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       tryInit();
     }
 
-    // ===== 后端适配器（可插拔：Waline / 本地回退）=====
-    // LeanCloud 已于 2026-01 宣布停服(2027 关停)，改用 Waline（Vercel + Neon 免费）
+    // ===== 后端适配器（可插拔）=====
     // 未填 serverURL 时自动回退到 localStorage，站点照常工作；填好后即变为共享后端。
     const WALINE_CONFIG = {
       serverURL: ""       // ← 暂未配置可用后端（Waline/Vercel 国内不可达）；留空则回退本地游客评论
     };
 
-    // ===== Twikoo 评论后端（腾讯云开发 CloudBase）=====
+    // ===== Twikoo 评论后端（Netlify + MongoDB Atlas）=====
     // 游客填昵称即可留言，评论存云端、跨设备互相可见（解决 localStorage 各看各的痛点）。
     // envId 来自「设置 → 评论后端」，仅存本机 localStorage，不硬编码、不上传。
     const TWIKOO_KEY = "zhuer_twikoo_env";
@@ -6149,12 +6146,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         </div>
         <div class="settings-section">
           <h4>评论后端（Twikoo · 游客共享）</h4>
-          <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">填入腾讯云开发环境 ID（envId），启用后访客填昵称即可留言，且所有人的评论跨设备互相可见。envId 仅存本机浏览器。部署与获取 envId 见「关于」页说明。</p>
-          <input type="text" id="twikoo-env-input" placeholder="例如：my-blog-1a2b3c" value="${localStorage.getItem(TWIKOO_KEY) || ''}" style="width:100%;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-family:var(--font-sans);font-size:13px;">
+          <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">填入 Twikoo 服务端地址（Netlify 部署 URL），启用后访客填昵称即可留言，且所有人的评论跨设备互相可见。地址仅存本机浏览器。部署步骤见「关于」页说明。</p>
+          <input type="text" id="twikoo-env-input" placeholder="例如：https://xxx.netlify.app/.netlify/functions/twikoo" value="${localStorage.getItem(TWIKOO_KEY) || ''}" style="width:100%;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-family:var(--font-sans);font-size:13px;">
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
             <button class="btn btn-primary" onclick="saveTwikooEnv()">保存并启用</button>
           </div>
-          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">若开启后评论区报错「未找到环境」，请确认：① 云函数已部署并选对版本；② 已在云开发「安全配置」把本站域名加入 WEB 安全域名；③ 已开启「匿名登录」。</p>
+          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">若开启后评论区报错，请确认：① 已在 Netlify 部署 twikoo-netlify 函数并获取 URL；② MongoDB Atlas 连接字符串已正确配置到环境变量 MONGODB_URI。</p>
         </div>
         <div class="settings-section">
           <h4>天气动效测试</h4>
@@ -6313,6 +6310,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     function renderMarkdown(content) {
+      if (typeof marked === "undefined" || typeof DOMPurify === "undefined") {
+        // 库尚未加载（defer 延迟），降级为纯文本 + 基本转义
+        return content.replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+      }
       const rawHtml = marked.parse(content);
       return DOMPurify.sanitize(rawHtml);
     }
@@ -7925,8 +7926,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             });
           }
         } else if (mode === "cloud") {
-          // 体积积云（cumulus）：阴天/多云 → 稀疏，仅 2–3 朵缓慢飘移
-          const n = 2 + Math.floor(Math.random() * 2);
+          // 薄雾云（mist-cloud）：阴天/多云 → 4–6 朵扁平薄云散布顶部，如远山浮霭
+          const n = 4 + Math.floor(Math.random() * 3);
           for (let i = 0; i < n; i++) scene.clouds.push(makeCumulus(W, H, i, n));
         }
       }
@@ -8058,51 +8059,42 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         ctx.restore();
       }
       function makeCumulus(W, H, i, n) {
-        // 页面坐标：集中在顶部波段，下滚随页面滚走（不钉视口）
-        const baseY = H * (0.05 + 0.26 * (n > 1 ? i / (n - 1) : 0.4));
+        // 雾气聚拢式薄云：散布在页面顶部窄带，扁平低矮，像远山浮霭
+        const baseY = H * (0.02 + 0.12 * (n > 1 ? i / (n - 1) : 0.4));
         const blobs = [];
-        const nb = 6 + Math.floor(Math.random() * 3);
+        // 横向拉长、纵向压扁 —— 模仿雾气铺展而非积云堆积
+        const nb = 4 + Math.floor(Math.random() * 3);
         for (let b = 0; b < nb; b++) {
           blobs.push({
-            dx: (Math.random() - 0.5) * 220,
-            dy: (Math.random() - 0.5) * 46 - 6,
-            r: 58 + Math.random() * 74,
-            a: 0.55 + Math.random() * 0.4,
+            dx: (Math.random() - 0.5) * 180,
+            dy: (Math.random() - 0.5) * 18 - 3,
+            r: 22 + Math.random() * 38,
+            a: 0.30 + Math.random() * 0.32,
             ph: Math.random() * Math.PI * 2,
-            sw: 0.12 + Math.random() * 0.22      // 形变速度
+            sw: 0.06 + Math.random() * 0.14       // 更缓慢的形变呼吸
           });
         }
         return {
-          x: Math.random() * W, y: baseY,
-          scale: 0.7 + Math.random() * 0.9,
-          speed: 9 + Math.random() * 13,         // 缓慢飘移
+          x: W * (0.08 + 0.84 * (n > 1 ? i / (n - 1) : Math.random())), y: baseY,
+          scale: 0.35 + Math.random() * 0.45,     // 整体缩小：不再是大团
+          speed: 5 + Math.random() * 8,            // 更慢的飘移（静谧感）
           blobs,
-          alpha: 0.42 + Math.random() * 0.22
+          alpha: 0.12 + Math.random() * 0.16       // 薄雾透明度：不遮挡阅读
         };
       }
       function drawCumulus(c, time, sy) {
         ctx.save();
         ctx.translate(c.x, sy);
-        ctx.scale(c.scale, c.scale);
+        ctx.scale(c.scale, c.scale * 0.55);          // 纵向再压扁 45% —— 扁平雾气感
         ctx.globalAlpha = c.alpha;
-        // 暗部（云底阴影）→ 体积感
+        // 单层柔光渲染（不再分暗部/亮部，统一为半透明白霭）
         for (const b of c.blobs) {
-          const breathe = 1 + 0.12 * Math.sin(time * b.sw + b.ph);
+          const breathe = 1 + 0.06 * Math.sin(time * b.sw + b.ph);   // 更轻微的呼吸
           const r = b.r * breathe;
-          const g = ctx.createRadialGradient(b.dx, b.dy + r * 0.22, 0, b.dx, b.dy + r * 0.22, r);
-          g.addColorStop(0, `rgba(142,152,170,${b.a * 0.5})`);
-          g.addColorStop(1, "rgba(142,152,170,0)");
-          ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(b.dx, b.dy + r * 0.22, r, 0, Math.PI * 2); ctx.fill();
-        }
-        // 亮部（云体，顶部更亮）
-        for (const b of c.blobs) {
-          const breathe = 1 + 0.12 * Math.sin(time * b.sw + b.ph);
-          const r = b.r * breathe;
-          const g = ctx.createRadialGradient(b.dx, b.dy - r * 0.22, 0, b.dx, b.dy, r);
-          g.addColorStop(0, `rgba(255,255,255,${b.a})`);
-          g.addColorStop(0.55, `rgba(243,247,252,${b.a * 0.72})`);
-          g.addColorStop(1, "rgba(228,234,244,0)");
+          const g = ctx.createRadialGradient(b.dx, b.dy - r * 0.15, 0, b.dx, b.dy, r);
+          g.addColorStop(0, `rgba(245,248,252,${b.a})`);
+          g.addColorStop(0.5, `rgba(232,238,245,${b.a * 0.6})`);
+          g.addColorStop(1, "rgba(220,228,240,0)");
           ctx.fillStyle = g;
           ctx.beginPath(); ctx.arc(b.dx, b.dy, r, 0, Math.PI * 2); ctx.fill();
         }
@@ -8333,29 +8325,51 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
     // ===== 初始化 =====
     window.addEventListener("hashchange", handleRoute);
-    window.addEventListener("DOMContentLoaded", () => {
-      // 恢复主题
-      if (localStorage.getItem("theme") === "dark") {
-        document.body.classList.add("dark");
-        document.getElementById("theme-btn").textContent = "●";
+
+    function boot() {
+      try {
+        // 恢复主题
+        if (localStorage.getItem("theme") === "dark") {
+          document.body.classList.add("dark");
+          const tb = document.getElementById("theme-btn");
+          if (tb) tb.textContent = "●";
+        }
+        incrementTraffic();
+        updateAdminUI();
+        handleRoute();
+        initFloatingQuotes();
+        renderNavQuote();
+        if (window.Weather) Weather.init();
+      } catch (e) {
+        console.error("初始化出错：", e);
+        try { handleRoute(); } catch (_) {}
       }
-      incrementTraffic();
-      updateAdminUI();
-      handleRoute();
-      initFloatingQuotes();
-      renderNavQuote();
-      Weather.init();
-      // 启动即预拉取 GitHub Issues（文章跨设备），拉到后刷新列表
+      // 启动即预拉取 GitHub Issues（文章跨设备），不阻塞首屏
       if (GH_CMS.enabled) {
         fetchPostsFromGitHub().then(list => {
-          if (list.length) { GH_POSTS = list; if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute(); }
-        });
+          if (list && list.length) {
+            GH_POSTS = list;
+            if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
+          }
+        }).catch(() => {});
+      }
+    }
+
+    // 首屏渲染：主脚本解析完毕立即触发（不等外部 CDN / 不等 DOMContentLoaded）
+    // 用 requestAnimationFrame 确保 DOM 已构建；再用 setTimeout(0) 兜底
+    if (document.readyState === "loading") {
+      // 仍在解析中（正常情况）：用 rAF 确保下一个渲染帧执行
+      window.requestAnimationFrame ? requestAnimationFrame(boot) : setTimeout(boot, 0);
+    } else {
+      boot();
+    }
+    // 终极兜底：window.load 时若还在 loading 态，强制重渲染
+    window.addEventListener("load", () => {
+      const app = document.getElementById("app");
+      if (app && app.querySelector(".loading") && app.children.length <= 1) {
+        try { handleRoute(); } catch (e) { console.error("force render:", e); }
       }
     });
-
-    if (typeof marked === "undefined") {
-      window.addEventListener("load", handleRoute);
-    }
   </script>
 </body>
 </html>
