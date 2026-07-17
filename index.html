@@ -6450,8 +6450,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         return content.replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
       }
       const rawHtml = marked.parse(content);
-      // 清理编辑器残留的行内对齐样式（contenteditable 注入的 text-align:center 等）
-      const cleanHtml = rawHtml.replace(/style="[^"]*text-align\s*:\s*(center|right|justify)[^"]*"/gi, '');
+      // 清理编辑器残留的所有居中/对齐样式（contenteditable 注入的）
+      let cleanHtml = rawHtml
+        .replace(/<center[^>]*>/gi, '<div>')           // <center> → <div>
+        .replace(/<\/center>/gi, '</div>')             // </center> → </div>
+        .replace(/\salign\s*=\s*["']?center["']?/gi, '')  // 去掉 align="center"
+        .replace(/style="[^"]*text-align\s*:\s*(center|right|justify)[^"]*"/gi, '');  // 去掉行内对齐样式
       return DOMPurify.sanitize(cleanHtml);
     }
 
