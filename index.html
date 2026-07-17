@@ -1711,7 +1711,10 @@
 
     /* ===== 响应式 ===== */
     @media (max-width: 640px) {
-      .hero h1 { font-size: 64px; letter-spacing: 4px; }
+      .hero { padding-top: 16px; margin-bottom: 28px; }
+      .hero h1 { font-size: 42px; letter-spacing: 4px; }
+      .hero .hero-sub { font-size: 15px; margin-top: 8px; }
+      .hero .hero-source { font-size: 11px; margin-top: 4px; }
       .post-detail h1 { font-size: 22px; }
       .markdown { font-size: 15px; }
       .markdown h2 { font-size: 19px; }
@@ -1719,12 +1722,19 @@
       .about-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
       .stat-card { padding: 12px 8px; }
       .stat-card .num { font-size: 22px; }
-      .main { padding: 32px 16px; }
-      .header-inner { padding: 12px 16px; }
-      .nav { gap: 14px; }
-      .logo { font-size: 20px; }
-      .modal { padding: 20px; }
+      .main { padding: 20px 12px; }
+      .header-inner { padding: 10px 14px; }
+      .nav { gap: 10px; font-size: 13px; }
+      .logo { font-size: 18px; letter-spacing: 2px; }
+      .nav-quote-bar { padding: 7px 14px; font-size: 13px; }
+      .nq-text { font-size: 15px; }
+      .nq-mark { font-size: 17px; }
+      .modal { padding: 16px; }
+      .search-bar input { font-size: 14px; }
     }
+
+    /* 文章评论（Twikoo）精简：只留昵称(ID)一栏，隐藏邮箱与网址 */
+    .tk-input-mail, .tk-input-link { display: none !important; }
   </style>
 </head>
 <body>
@@ -1797,7 +1807,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
   <!-- Twikoo 评论后端 SDK（Netlify 精简版，不含腾讯云 tcb）。用 async 不阻塞首屏 -->
-  <script async src="twikoo.min.js"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/twikoo@1.6.41/dist/twikoo.min.js"></script>
   <!-- 真实全站访问量（跨设备，第三方不蒜子） -->
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
   <script>
@@ -5045,6 +5055,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       apiBase: "https://api.github.com/repos/mmax423/MyPlog"
     };
     let GH_POSTS = [];   // 从 GitHub Issues 预拉取的缓存（启动+发文后刷新）
+    let ghReady = false; // GitHub 首次同步是否完成（完成后才渲染文章列表，避免「先本地后云端」两段式跳动）
     const GH_ISSUE_RE = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
 
     // 关于页「站点更新日志」默认内容（管理员可在关于页编辑覆盖）
@@ -5308,11 +5319,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function getAllPosts() {
       const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const hidden = getHiddenSlugs();
-      // 按 slug 合并优先级：本地编辑(userPosts) > GitHub Issues(GH_POSTS) > 内置原版(POSTS)
+      // 合并优先级（单一数据源，杜绝「不同地方显示不同文章」）：
+      //   - 内置原版 POSTS 作基线
+      //   - 未同步到 GitHub 的本地文章（草稿/待发布）本地优先
+      //   - 已同步到 GitHub 的文章：无论内置还是用户创建，一律以 GitHub 为准（含内置文章发布后的更新）
       const map = new Map();
       POSTS.forEach(p => map.set(p.slug, p));
-      GH_POSTS.forEach(p => { if (!map.has(p.slug)) map.set(p.slug, p); });
-      userPosts.forEach(p => map.set(p.slug, p));   // 本地覆盖（含未同步的草稿/编辑）
+      userPosts.forEach(p => { if (!p._ghIssue) map.set(p.slug, p); });  // 仅未同步的本地文章优先
+      GH_POSTS.forEach(p => { map.set(p.slug, p); });                    // 已同步文章以 GitHub 为准（覆盖本地/内置副本）
       let all = [...map.values()].filter(p => !hidden.includes(p.slug));
       // 防御性二次去重
       const seen = new Set();
@@ -5352,6 +5366,44 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       ].join("\n");
       return fm;
     }
+    // 方案 A：发布前把正文里的 base64 图片抽到仓库 images/，换成 raw 短链接
+    // 返回 { content: 替换后的正文, uploaded: 成功数, failed: 失败数 }
+    async function uploadImagesInContent(content, token) {
+      if (!content || !token) return { content: content || "", uploaded: 0, failed: 0 };
+      const re = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g;
+      const matches = [...content.matchAll(re)];
+      if (!matches.length) return { content, uploaded: 0, failed: 0 };
+      const extMap = { png:"png", jpeg:"jpg", jpg:"jpg", gif:"gif", webp:"webp", svg:"svg", bmp:"bmp" };
+      let result = content, uploaded = 0, failed = 0;
+      for (const m of matches) {
+        const dataUri = m[0];
+        const mime = (dataUri.match(/data:image\/([a-zA-Z0-9.+-]+);/) || [])[1] || "png";
+        const ext = extMap[mime] || "png";
+        const b64 = dataUri.slice(dataUri.indexOf(",") + 1);
+        const filename = `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        try {
+          const res = await fetch(`${GH_CMS.apiBase}/contents/images/${filename}`, {
+            method: "PUT",
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json", "Accept": "application/vnd.github+json" },
+            body: JSON.stringify({ message: `add image ${filename}`, content: b64, branch: "main" })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const url = (data.content && data.content.download_url)
+              ? data.content.download_url
+              : `https://raw.githubusercontent.com/${GH_CMS.repo}/main/images/${filename}`;
+            result = result.split(dataUri).join(url);
+            uploaded++;
+          } else {
+            failed++;
+            console.warn("[图片上传] 失败", res.status, (await res.text().catch(() => "")).slice(0, 200));
+          }
+        } catch (e) { failed++; console.warn("[图片上传] 异常", e.message); }
+      }
+      if (failed) console.warn(`[图片上传] ${uploaded} 成功 / ${failed} 失败（检查 Token 是否含 Contents 写权限）`);
+      return { content: result, uploaded, failed };
+    }
+
     function parseIssueBody(body) {
       const m = (body || "").match(GH_ISSUE_RE);
       if (!m) return { meta: {}, content: body || "" };
@@ -5404,9 +5456,20 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const token = localStorage.getItem(GH_TOKEN_KEY);
       if (!token) {
         alert("未配置 GitHub Token：文章仅存本机。\n请在「设置 → GitHub 同步」粘贴 Token，发布后才会跨设备可见。");
-        return false;
+        return { ok: false };
       }
-      const body = buildIssueBody(post);
+      // 方案 A：先抽 base64 图片 → 传仓库 images/ → 换成 raw 短链接，再发 Issue
+      const img = await uploadImagesInContent(post.content, token);
+      const postForIssue = Object.assign({}, post, { content: img.content });
+      const body = buildIssueBody(postForIssue);
+      // 极端长文（纯文字超 65536）的最后兜底；图片已抽离，极少触发
+      const GH_BODY_MAX = 65000;
+      let truncated = false;
+      let safeBody = body;
+      if (safeBody.length > GH_BODY_MAX) {
+        safeBody = safeBody.slice(0, GH_BODY_MAX) + "\n\n[…内容过长，已截断。完整内容请在本机查看。]";
+        truncated = true;
+      }
       const labels = [GH_CMS.label];
       if (post.category) labels.push(post.category);
       const headers = {
@@ -5416,21 +5479,39 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       };
       try {
         if (post._ghIssue) {
-          await fetch(`${GH_CMS.apiBase}/issues/${post._ghIssue}`, {
+          const r = await fetch(`${GH_CMS.apiBase}/issues/${post._ghIssue}`, {
             method: "PATCH", headers,
-            body: JSON.stringify({ title: post.title, body, labels })
+            body: JSON.stringify({ title: post.title, body: safeBody, labels })
           });
+          if (!r.ok) { alert("更新 Issue 失败：" + r.status); return false; }
         } else {
-          const res = await fetch(`${GH_CMS.apiBase}/issues`, {
+          // 先尝试带标签创建；若 422（常见：标签不存在），降级为不带标签重试
+          const payload = { title: post.title, body: safeBody, labels };
+          let res = await fetch(`${GH_CMS.apiBase}/issues`, {
             method: "POST", headers,
-            body: JSON.stringify({ title: post.title, body, labels })
+            body: JSON.stringify(payload)
           });
-          if (!res.ok) { alert("同步失败：" + res.status); return false; }
+          if (!res.ok && res.status === 422) {
+            // 降级：去掉 labels 重试（GitHub 不接受不存在的标签名）
+            res = await fetch(`${GH_CMS.apiBase}/issues`, {
+              method: "POST", headers,
+              body: JSON.stringify({ title: post.title, body: safeBody })
+            });
+          }
+          if (!res.ok) {
+            let errBody = {};
+            try { errBody = await res.json(); } catch(e) {}
+            alert("同步失败：" + res.status + "\n" +
+              (errBody.message || "") + "\n" +
+              (errBody.errors ? JSON.stringify(errBody.errors) : "") +
+              "\n\n可能原因：Token 无该仓库写权限 / 标签不存在 / 仓库禁用了 Issues。");
+            return false;
+          }
           const data = await res.json();
           post._ghIssue = data.number;
         }
-        return true;
-      } catch (e) { alert("同步到 GitHub 失败：" + e.message); return false; }
+        return { ok: true, truncated, imgUploaded: img.uploaded, imgFailed: img.failed };
+      } catch (e) { alert("同步到 GitHub 失败：" + e.message); return { ok: false, imgFailed: img.failed }; }
     }
     // 关闭（删除）GitHub 上的 Issue
     async function closeGithubIssue(issueNumber) {
@@ -5856,15 +5937,19 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     function deletePost(slug) {
-      if (!confirm("确定删除这篇文章吗？\n删除后可以从管理页面的回收站恢复。")) return;
-      if (slug.startsWith("user-")) {
-        deleteUserPost(slug);
-      } else {
-        hideSlug(slug);
+      if (!confirm("确定删除这篇文章吗？\n删除后将从本站移除（已同步到云端的文章会一并关闭对应 Issue）。")) return;
+      // 取出文章（本地或 GitHub 副本都要看），以便拿到 issue 号
+      const localPost = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]").find(p => p.slug === slug);
+      const ghPost = GH_POSTS.find(p => p.slug === slug);
+      const issueNum = (localPost && localPost._ghIssue) || (ghPost && ghPost._ghIssue);
+      // 1) 立即从所有数据源移除
+      if (slug.startsWith("user-")) deleteUserPost(slug);
+      hideSlug(slug);   // ← 关键：所有删除都记入隐藏列表，即使云端重新拉取也不会「复活」
+      GH_POSTS = GH_POSTS.filter(p => p.slug !== slug);
+      // 2) 云端关闭对应 Issue（若已同步）；关闭成功后刷新缓存，但隐藏列表仍会过滤掉它
+      if (issueNum) {
+        closeGithubIssue(issueNum).then(() => fetchPostsFromGitHub().then(l => { GH_POSTS = l; }));
       }
-      // 同步关闭 GitHub 上的 Issue（若已同步）
-      const gone = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]").find(p => p.slug === slug);
-      if (gone && gone._ghIssue) closeGithubIssue(gone._ghIssue).then(() => fetchPostsFromGitHub().then(l => { GH_POSTS = l; }));
       closeModal();
       navigate("home");
       handleRoute();
@@ -6118,14 +6203,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         </div>
         <div class="settings-section">
           <h4>GitHub 同步（文章跨设备）</h4>
-          <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">粘贴 GitHub Personal Access Token（只需 <code>public_repo</code> 权限）。发布文章会自动创建/更新仓库 Issue，手机等任意设备刷新即可看到。Token 仅存本机浏览器，不会上传或被他人看到。</p>
+          <p style="font-size:13px;color:var(--fg-light);margin:0 0 8px;">粘贴 GitHub Personal Access Token。发布文章会自动创建/更新仓库 Issue，手机等任意设备刷新即可看到。若文章含图片，Token 还需 <code>Contents: Read and Write</code> 权限（图片会传到仓库 <code>images/</code> 并换成短链接）。Token 仅存本机浏览器，不会上传或被他人看到。</p>
           <input type="password" id="gh-token-input" placeholder="ghp_xxx 或 github_pat_xxx" value="${localStorage.getItem(GH_TOKEN_KEY) || ''}" style="width:100%;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-family:var(--font-sans);font-size:13px;">
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
             <button class="btn btn-primary" onclick="saveGithubToken()">保存 Token</button>
             <button class="btn btn-secondary" onclick="testGithubToken()">测试连接</button>
             <button class="btn btn-secondary" onclick="refreshGithubPosts()">立即拉取文章</button>
+            <button class="btn btn-primary" onclick="publishAllToGithub()">🚀 一键发布本机文章</button>
           </div>
-          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">获取 Token：GitHub → 右上角头像 → Settings → Developer settings → Personal access tokens → Tokens(classic) → Generate → 勾 <code>public_repo</code> → Generate。</p>
+          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">「一键发布」会把本机所有<strong>非草稿</strong>文章推送到 GitHub Issues（<code>updatedAt</code> 刷新为今天，自动进入「最新」），任意设备刷新即见；草稿仍留本机不公开。</p>
+          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">获取 Token：GitHub → 右上角头像 → Settings → Developer settings → Personal access tokens。Fine-grained：选本仓库 → 开 <code>Issues: Read and Write</code> 与 <code>Contents: Read and Write</code>。Classic：勾 <code>public_repo</code>。</p>
         </div>
         <div class="settings-section">
           <h4>评论后端（Twikoo · 游客共享）</h4>
@@ -6194,6 +6281,49 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       GH_POSTS = list;
       handleRoute();
       showToast("已从 GitHub 拉取 " + list.length + " 篇文章");
+    }
+    // 一键把本机所有非草稿文章发布/更新到 GitHub Issues（跨设备可见）
+    async function publishAllToGithub() {
+      const token = localStorage.getItem(GH_TOKEN_KEY);
+      if (!token) { alert("请先在上方填写 GitHub Token 并点「保存 Token」，再发布。"); return; }
+      const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const toPublish = userPosts.filter(p => !p.draft);
+      if (!toPublish.length) { alert("本机没有可发布的非草稿文章。"); return; }
+      if (!confirm(`将把本机 ${toPublish.length} 篇非草稿文章发布/更新到 GitHub Issues，所有人立即可见。继续？`)) return;
+      let ok = 0, fail = 0, truncatedList = [], imgUploadedTotal = 0, imgFailedTotal = 0;
+      const today = new Date().toISOString().slice(0, 10);
+      for (const post of toPublish) {
+        post.updatedAt = today; // 刷新更新时间，使文章进入「最新」
+        const r = await pushPostToGitHub(post);
+        if (r && r.ok) {
+          ok++;
+          if (r.truncated) truncatedList.push(post.title || post.slug);
+          if (r.imgUploaded) imgUploadedTotal += r.imgUploaded;
+          if (r.imgFailed) imgFailedTotal += r.imgFailed;
+          // 回写 issue 号与更新时间到本机覆盖副本
+          const ups = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+          const i = ups.findIndex(p => p.slug === post.slug);
+          if (i >= 0) {
+            ups[i].updatedAt = today;
+            if (post._ghIssue) { ups[i]._ghIssue = post._ghIssue; ups[i]._ghSource = true; }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(ups));
+          }
+        } else {
+          fail++;
+          if (r && r.imgFailed) imgFailedTotal += r.imgFailed;
+        }
+      }
+      // 刷新 GitHub 缓存并重渲染，使任意设备立即可见
+      const list = await fetchPostsFromGitHub();
+      GH_POSTS = list;
+      if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
+      let msg = `发布完成 ✅\n成功 ${ok} 篇，失败 ${fail} 篇。\n已同步的文章现在所有人可见，且进入「最新」。\n（草稿仍留本机，不会公开）`;
+      if (imgUploadedTotal) msg += `\n🖼️ 已上传 ${imgUploadedTotal} 张图片到仓库 images/`;
+      if (imgFailedTotal) msg += `\n⚠️ ${imgFailedTotal} 张图片上传失败（需给 Token 加 Contents: Read and Write 权限）`;
+      if (truncatedList.length) {
+        msg += `\n\n⚠️ 以下文章内容超长，已截断（GitHub 65536字符限制）：\n${truncatedList.map((t,i) => `${i+1}. ${t}`).join("\n")}`;
+      }
+      alert(msg);
     }
     function exportBackup() {
       const keys = [STORAGE_KEY, BIO_KEY, TAGS_KEY, COMMENTS_KEY, VIEWS_KEY, LIKES_KEY, TRAFFIC_KEY, "guestbook", "hiddenSlugs", "extraTags", "zhuer_blog_liked", "theme", "tags-migrated-20260713"];
@@ -6398,12 +6528,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         );
       }
       return posts.sort((a, b) => {
-        // 三级排序：精选(置顶) > 最新(3天内更新) > 普通
-        const rank = p => p.pinned ? 2 : (isRecentlyUpdated(p, 3) ? 1 : 0);
+        // 三级排序：最新(3天内更新) > 精选(置顶) > 普通
+        const rank = p => (!p.pinned && isRecentlyUpdated(p, 3)) ? 2 : (p.pinned ? 1 : 0);
         const ra = rank(a), rb = rank(b);
         if (ra !== rb) return rb - ra;
         // 同组内排序：最新组按更新时间倒序，其余按日期
-        if (ra === 1) {
+        if (ra === 2) {
           const ua = a.updatedAt || a.date || "", ub = b.updatedAt || b.date || "";
           return ua < ub ? 1 : -1;
         }
@@ -6734,6 +6864,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function renderPostList() {
       const container = document.getElementById("post-list");
       if (!container) return;
+      // 同步未完成前不渲染文章列表：先显示「同步中」，避免本地数据先出、云端覆盖后文章整体跳动/重排
+      // （这正是「不同地方显示不同文章」的根因——两段式渲染让同一篇文章在不同状态下出现在不同区块）
+      if (GH_CMS.enabled && !ghReady) {
+        container.innerHTML = '<div class="loading" style="padding:48px 0;">正在从云端同步文章…<br><span style="font-size:12px;color:var(--fg-light);">若长时间停留在此，请检查网络或 GitHub Token</span></div>';
+        return;
+      }
       const all = getFilteredPosts();
 
       let info = "";
@@ -6775,71 +6911,24 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
 
       // 默认列表模式
-      // 在默认视图下（无筛选/搜索），精选置顶并与普通文章之间加分隔线
+      // 默认视图下（无筛选/搜索）顺序：1.最新(3天内更新) → 2.精选(置顶) → 3.其他(按时间)，组间加分隔线
       const isDefaultView = !currentSearch && !currentFilter.category && !currentFilter.tag && !currentFilter.featured;
       const featuredPosts = isDefaultView ? all.filter(p => p.pinned) : [];
       const latestPosts = isDefaultView ? all.filter(p => !p.pinned && isRecentlyUpdated(p, 3)) : [];
       const regularPosts = isDefaultView ? all.filter(p => !p.pinned && !isRecentlyUpdated(p, 3)) : all;
 
       let listHTML = "";
-      if (featuredPosts.length) {
-        listHTML += featuredPosts.map((post, i) => `
-          <div class="post-card reveal" style="transition-delay:${Math.min(i * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
-            <div class="post-meta">
-              <time>${formatDate(post.date)}</time><span>·</span>
-              ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
-              <span>${post.tags.length} 个标签</span>
-              ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
-              ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
-              ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${isFeatured(post.slug) ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
-            </div>
-            <h3>${highlight(post.title, currentSearch)}</h3>
-            ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
-            <p class="excerpt">${displayExcerpt(post)}</p>
-            <div class="post-tags">
-              ${post.tags.map(t => `<span class="post-tag" onclick="event.stopPropagation();currentFilter.tag='${t}';filterOpen=true;navigate('home');">#${t}</span>`).join("")}
-            </div>
-            ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
-          </div>
-        `).join("");
-        if (latestPosts.length || regularPosts.length) {
-          listHTML += `<div class="divider"><span>· · ·</span></div>`;
-        }
-      }
-      // 「最新」组：3 天内更新、非精选，置于精选之后、普通之前，标「最新」
-      if (latestPosts.length) {
-        listHTML += latestPosts.map((post, i) => `
-          <div class="post-card reveal" style="transition-delay:${Math.min((featuredPosts.length + i) * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
-            <div class="post-meta">
-              <time>${formatDate(post.date)}</time><span>·</span>
-              ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
-              <span>${post.tags.length} 个标签</span>
-              <span class="latest-badge">● 最新</span>
-              ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
-              ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button>` : ""}
-            </div>
-            <h3>${highlight(post.title, currentSearch)}</h3>
-            ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
-            <p class="excerpt">${displayExcerpt(post)}</p>
-            <div class="post-tags">
-              ${post.tags.map(t => `<span class="post-tag" onclick="event.stopPropagation();currentFilter.tag='${t}';filterOpen=true;navigate('home');">#${t}</span>`).join("")}
-            </div>
-            ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
-          </div>
-        `).join("");
-        if (regularPosts.length) {
-          listHTML += `<div class="divider"><span>· · ·</span></div>`;
-        }
-      }
-      listHTML += regularPosts.map((post, i) => `
-        <div class="post-card reveal" style="transition-delay:${Math.min((featuredPosts.length + i) * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
+      // 统一卡片渲染：★精选 / ●最新 徽标按文章状态自动判定
+      const buildCard = (post, i, base) => `
+        <div class="post-card reveal" style="transition-delay:${Math.min((base + i) * 0.05, 0.3)}s" onclick="navigate('post','${post.slug}')">
           <div class="post-meta">
             <time>${formatDate(post.date)}</time><span>·</span>
             ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
             <span>${post.tags.length} 个标签</span>
             ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
+            ${!post.pinned && isRecentlyUpdated(post, 3) ? `<span class="latest-badge">● 最新</span>` : ""}
             ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
-            ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${isFeatured(post.slug) ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
+            ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${post.pinned ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
           </div>
           <h3>${highlight(post.title, currentSearch)}</h3>
           ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
@@ -6848,8 +6937,20 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             ${post.tags.map(t => `<span class="post-tag" onclick="event.stopPropagation();currentFilter.tag='${t}';filterOpen=true;navigate('home');">#${t}</span>`).join("")}
           </div>
           ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
-        </div>
-      `).join("");
+        </div>`;
+      // 默认视图顺序：1.最新(3天内更新) → 2.精选(置顶) → 3.其他(按时间)
+      let offset = 0;
+      if (latestPosts.length) {
+        listHTML += latestPosts.map((post, i) => buildCard(post, i, offset)).join("");
+        offset += latestPosts.length;
+        if (featuredPosts.length || regularPosts.length) listHTML += `<div class="divider"><span>· · ·</span></div>`;
+      }
+      if (featuredPosts.length) {
+        listHTML += featuredPosts.map((post, i) => buildCard(post, i, offset)).join("");
+        offset += featuredPosts.length;
+        if (regularPosts.length) listHTML += `<div class="divider"><span>· · ·</span></div>`;
+      }
+      listHTML += regularPosts.map((post, i) => buildCard(post, i, offset)).join("");
       container.innerHTML = info + listHTML + (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
 
       setTimeout(observeReveal, 30);
@@ -7188,31 +7289,91 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       setTimeout(observeReveal, 30);
     }
 
-    // ===== 留言板 =====
-    function getGuestbook() {
-      try { return JSON.parse(localStorage.getItem("guestbook") || "[]"); } catch { return []; }
+    // ===== 留言板（Twikoo 后端：跨设备共享）=====
+    const GUESTBOOK_PATH = "guestbook"; // 固定 path，所有访客共享同一条评论串
+    function guestbookCloud() { return !!TWIKOO_CONFIG.envId; }
+
+    // 拉取云端留言（Twikoo COMMENT_GET）—— 纯云端，无本地兜底
+    async function fetchGuestbookCloud() {
+      const onePage = async (offset) => {
+        try {
+          const res = await fetch(TWIKOO_CONFIG.envId, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ event: "COMMENT_GET", url: GUESTBOOK_PATH, limit: 200, offset })
+          });
+          if (!res.ok) {
+            let errText = "";
+            try { errText = await res.text(); } catch(_) {}
+            console.warn("[留言板] HTTP", res.status, errText.slice(0, 200));
+            return null;
+          }
+          const json = await res.json();
+          const result = json && json.result;
+          const data = result && Array.isArray(result.data) ? result.data : [];
+          const more = !!(result && result.more);
+          return { data, more };
+        } catch (err) {
+          console.warn("[留言板] 请求异常:", err.message);
+          return null;
+        }
+      };
+      try {
+        const seen = new Set();
+        let all = [], off = 0;
+        for (let i = 0; i < 3; i++) {
+          const page = await onePage(off);
+          if (!page) return all.length ? all : null;
+          page.data.forEach(c => { const k = c.id || c._id; if (k && !seen.has(k)) { seen.add(k); all.push(c); } });
+          if (!page.more || page.data.length === 0) break;
+          off += page.data.length;
+        }
+        return all;
+      } catch (e) { console.warn("[留言板] 分页加载异常:", e.message); return null; }
     }
-    function addGuestbookEntry(name, text) {
-      const entries = getGuestbook();
-      entries.unshift({ name: name || "匿名访客", text, time: new Date().toLocaleString("zh-CN") });
-      localStorage.setItem("guestbook", JSON.stringify(entries));
+
+    // 提交云端留言（Twikoo COMMENT_SUBMIT）
+    async function postGuestbookCloud(name, text) {
+      const html = escapeHtml(text).replace(/\r?\n/g, "<br>");
+      try {
+        const res = await fetch(TWIKOO_CONFIG.envId, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "COMMENT_SUBMIT",
+            accessToken: null,
+            nick: name || "匿名访客",
+            mail: "",
+            link: "",
+            ua: navigator.userAgent,
+            url: GUESTBOOK_PATH,
+            href: location.href,
+            comment: html,
+            pid: "",
+            rid: ""
+          })
+        });
+        return res.ok;
+      } catch (e) { return false; }
     }
-    function deleteGuestbookEntry(index) {
-      if (!isAdmin) { alert("需要管理员权限"); return; }
-      const entries = getGuestbook();
-      entries.splice(index, 1);
-      localStorage.setItem("guestbook", JSON.stringify(entries));
-      renderGuestbook();
+
+    function twikooTime(c) {
+      const t = c.created || c.insertedAt || c.updatedAt;
+      if (!t) return "";
+      const d = new Date(typeof t === "number" ? t : t);
+      return isNaN(d.getTime()) ? "" : d.toLocaleString("zh-CN");
     }
 
     function renderGuestbook() {
-      const entries = getGuestbook();
       const app = document.getElementById("app");
-      const admin = isAdmin;
+      const cloud = guestbookCloud();
+      const badge = cloud
+        ? '<span style="font-size:12px;color:var(--accent);">🌐 云端共享 · 所有人可见</span>'
+        : '<span style="font-size:12px;color:var(--fg-light);">配置中 · 启用云端共享后所有人可见（管理员：「设置 → 评论后端」）</span>';
       app.innerHTML = `
         <header style="margin-bottom:40px;">
           <h1 style="font-family:var(--font-serif);font-size:28px;font-weight:600;color:var(--fg);margin-bottom:8px;">留言板</h1>
-          <p style="color:var(--fg-muted);font-size:14px;">留下你想说的话</p>
+          <p style="color:var(--fg-muted);font-size:14px;">留下你想说的话 ${badge}</p>
         </header>
 
         <div style="margin-bottom:40px;padding:24px;border:0.5px solid var(--border);border-radius:var(--radius);">
@@ -7221,29 +7382,58 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <button onclick="submitGuestbook()" style="margin-top:12px;padding:8px 24px;font-family:var(--font-sans);font-size:14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;transition:var(--transition);" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">发布留言</button>
         </div>
 
-        <div id="gb-list">
-          ${entries.length === 0 ? '<div class="loading">还没有留言，来写第一条吧</div>' :
-            entries.map((e, i) => `
-              <div style="padding:20px 0;border-bottom:0.5px solid var(--border);position:relative;">
-                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-                  <span style="font-family:var(--font-serif);font-size:15px;font-weight:600;color:var(--fg);">${escapeHtml(e.name)}</span>
-                  <span style="font-size:12px;color:var(--fg-muted);">${e.time}</span>
-                </div>
-                <p style="font-size:14px;color:var(--fg-muted);line-height:1.8;white-space:pre-wrap;">${escapeHtml(e.text)}</p>
-                ${admin ? `<button onclick="deleteGuestbookEntry(${i})" style="position:absolute;top:20px;right:0;font-size:12px;color:var(--fg-muted);background:none;border:none;cursor:pointer;">删除</button>` : ''}
-              </div>
-            `).join('')
-          }
-        </div>
+        <div id="gb-list"><div class="loading">加载中…</div></div>
       `;
+      loadGuestbook();
     }
 
-    function submitGuestbook() {
-      const name = document.getElementById("gb-name").value.trim();
-      const text = document.getElementById("gb-text").value.trim();
+    async function loadGuestbook() {
+      const list = document.getElementById("gb-list");
+      if (!list) return;
+      if (!guestbookCloud()) {
+        // 未配置后端：明确告知「配置中」，不用本地存储（本地无意义）
+        list.innerHTML = '<div class="loading" style="color:var(--fg-muted);">留言系统配置中，敬请期待 ✍️<br><span style="font-size:12px;">（管理员可在「设置 → 评论后端」填入 Twikoo 环境 ID 启用）</span></div>';
+        return;
+      }
+      const data = await fetchGuestbookCloud();
+      if (data === null) {
+        // 云端不可用：显示明确错误，不伪装成本地可用
+        list.innerHTML = '<div class="loading" style="color:#c0392b;">⚠️ 留言服务连接失败<br><span style="font-size:12px;color:var(--fg-muted);">后端不可用，访客暂时无法看到留言。请检查 Twikoo / Netlify 部署状态。</span></div>';
+        return;
+      }
+      if (data.length === 0) {
+        list.innerHTML = '<div class="loading">还没有留言，来写第一条吧</div>';
+        return;
+      }
+      list.innerHTML = data.map(e => `
+        <div style="padding:20px 0;border-bottom:0.5px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+            <span style="font-family:var(--font-serif);font-size:15px;font-weight:600;color:var(--fg);">${escapeHtml(e.nick || "匿名访客")}</span>
+            <span style="font-size:12px;color:var(--fg-muted);">${twikooTime(e)}</span>
+          </div>
+          <p style="font-size:14px;color:var(--fg-muted);line-height:1.8;">${e.comment || ""}</p>
+        </div>
+      `).join("");
+    }
+
+    async function submitGuestbook() {
+      const nameEl = document.getElementById("gb-name");
+      const textEl = document.getElementById("gb-text");
+      const name = nameEl.value.trim();
+      const text = textEl.value.trim();
       if (!text) { alert("留言内容不能为空"); return; }
-      addGuestbookEntry(name, text);
-      renderGuestbook();
+      if (!guestbookCloud()) {
+        alert("留言系统尚未配置后端，暂无法发布。请管理员在「设置 → 评论后端」填入 Twikoo 环境 ID。");
+        return;
+      }
+      const ok = await postGuestbookCloud(name, text);
+      if (!ok) {
+        alert("留言发送失败：后端连接异常，其他人暂时看不到这条留言。请稍后重试或检查部署。");
+        return;
+      }
+      nameEl.value = "";
+      textEl.value = "";
+      loadGuestbook();
     }
 
     function escapeHtml(str) {
@@ -7327,9 +7517,24 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       renderTagManage();
     }
 
+    function syncBusuanziStats() {
+      let tries = 0;
+      const fill = () => {
+        const pvEl = document.getElementById("stat-pv");
+        const uvEl = document.getElementById("stat-uv");
+        if (!pvEl || !uvEl) return;
+        const pv = document.getElementById("busuanzi_value_site_pv");
+        const uv = document.getElementById("busuanzi_value_site_uv");
+        const pvVal = pv ? parseInt(pv.textContent, 10) : NaN;
+        const uvVal = uv ? parseInt(uv.textContent, 10) : NaN;
+        if (!isNaN(pvVal)) pvEl.textContent = pvVal.toLocaleString();
+        if (!isNaN(uvVal)) uvEl.textContent = uvVal.toLocaleString();
+        if ((isNaN(pvVal) || isNaN(uvVal)) && tries++ < 8) setTimeout(fill, 400);
+      };
+      setTimeout(fill, 300);
+    }
+
     function renderAbout() {
-      incrementTraffic();
-      const traffic = getTraffic();
       const totalViews = getTotalViews();
       const app = document.getElementById("app");
       const tags = getAllTags();
@@ -7361,13 +7566,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
         <div class="divider"><span>· · ·</span></div>
 
-        <!-- 站点数据（接入后端后显示全站真实访问量） -->
+        <!-- 站点数据：全站真实访问量（不蒜子 busuanzi，跨设备） -->
         <div class="about-stats" style="margin-top:32px;">
-          <div class="stat-card reveal"><div class="num" id="stat-site-visits">${traffic.visits || 0}</div><div class="label" id="stat-site-visits-label">本设备访问</div></div>
-          <div class="stat-card reveal" style="transition-delay:0.1s"><div class="num">${totalViews}</div><div class="label">文章阅读量</div></div>
-          <div class="stat-card reveal" style="transition-delay:0.2s"><div class="num">${pinnedCount}</div><div class="label">篇精选</div></div>
+          <div class="stat-card reveal"><div class="num" id="stat-pv">—</div><div class="label">全站访问（PV）</div></div>
+          <div class="stat-card reveal" style="transition-delay:0.1s"><div class="num" id="stat-uv">—</div><div class="label">全站访客（UV）</div></div>
+          <div class="stat-card reveal" style="transition-delay:0.2s"><div class="num">${totalViews}</div><div class="label">文章阅读量</div></div>
+          <div class="stat-card reveal" style="transition-delay:0.3s"><div class="num">${pinnedCount}</div><div class="label">篇精选</div></div>
         </div>
-        <p style="text-align:center;font-size:12px;color:var(--fg-light);margin-top:8px;">↑ 浏览数据存储于本地（每台设备独立计数）。如需全局访问统计，可接入 Umami / 百度统计。</p>
+        <p style="text-align:center;font-size:12px;color:var(--fg-light);margin-top:8px;">↑ 全站访问 / 访客由不蒜子（busuanzi）统计，跨设备真实计数。</p>
 
         <div class="divider"><span>· · ·</span></div>
 
@@ -7424,16 +7630,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         ${isAdmin ? `<div style="margin-top:32px;text-align:center;"><button class="btn btn-secondary" style="padding:8px 20px;border:0.5px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:14px;color:var(--fg-muted);transition:var(--transition);background:transparent;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--fg-muted)'" onclick="editBio()">编辑简介</button></div>` : ""}
       `;
 
-      // 接入后端后，把"本设备访问"刷新为全站真实访问量
-      if (Backend.ready) {
-        Backend.getSiteViews().then(v => {
-          if (v == null) return;
-          const n = document.getElementById("stat-site-visits");
-          const l = document.getElementById("stat-site-visits-label");
-          if (n) n.textContent = v;
-          if (l) l.textContent = "全站访问";
-        });
-      }
+      // 接入不蒜子（busuanzi）真实全站访问 / 访客数
+      syncBusuanziStats();
     }
 
     // ===== 写作年表（时间线）=====
@@ -7909,8 +8107,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             });
           }
         } else if (mode === "cloud") {
-          // 薄雾云（mist-cloud）：阴天/多云 → 4–6 朵扁平薄云散布顶部，如远山浮霭
-          const n = 4 + Math.floor(Math.random() * 3);
+          // 多云：3–4 团错落的白云浮在页面顶端（可见云感，无单一大团块）
+          const n = 3 + Math.floor(Math.random() * 2);
           for (let i = 0; i < n; i++) scene.clouds.push(makeCumulus(W, H, i, n));
         }
       }
@@ -8042,45 +8240,53 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         ctx.restore();
       }
       function makeCumulus(W, H, i, n) {
-        // 雾气聚拢式薄云：散布在页面顶部窄带，扁平低矮，像远山浮霭
-        const baseY = H * (0.02 + 0.12 * (n > 1 ? i / (n - 1) : 0.4));
-        const blobs = [];
-        // 横向拉长、纵向压扁 —— 模仿雾气铺展而非积云堆积
-        const nb = 4 + Math.floor(Math.random() * 3);
-        for (let b = 0; b < nb; b++) {
-          blobs.push({
-            dx: (Math.random() - 0.5) * 180,
-            dy: (Math.random() - 0.5) * 18 - 3,
-            r: 22 + Math.random() * 38,
-            a: 0.30 + Math.random() * 0.32,
+        // 多云：可见的白云，几团错落浮在页面顶端（恢复此前的云感，但每团由多个中等云瓣拼成，不再有单一大团块）
+        const baseY = H * (0.03 + 0.13 * (n > 1 ? i / (n - 1) : 0.4));
+        const puffs = [];
+        const np = 3 + Math.floor(Math.random() * 2);          // 每团 3–4 个云瓣，排开成云形
+        const ox = (Math.random() - 0.5) * 70;
+        for (let b = 0; b < np; b++) {
+          puffs.push({
+            dx: ox + (b - (np - 1) / 2) * (44 + Math.random() * 26),
+            dy: (Math.random() - 0.5) * 22 - 4,
+            r: 34 + Math.random() * 30,                    // 中等大小（34–64），不堆成巨团
+            a: 0.55 + Math.random() * 0.28,                 // 可见的云（不再是几乎看不见的薄雾）
             ph: Math.random() * Math.PI * 2,
-            sw: 0.06 + Math.random() * 0.14       // 更缓慢的形变呼吸
+            sw: 0.05 + Math.random() * 0.10
           });
         }
         return {
-          x: W * (0.08 + 0.84 * (n > 1 ? i / (n - 1) : Math.random())), y: baseY,
-          scale: 0.35 + Math.random() * 0.45,     // 整体缩小：不再是大团
-          speed: 5 + Math.random() * 8,            // 更慢的飘移（静谧感）
-          blobs,
-          alpha: 0.12 + Math.random() * 0.16       // 薄雾透明度：不遮挡阅读
+          x: W * (0.10 + 0.80 * (n > 1 ? i / (n - 1) : Math.random())), y: baseY,
+          scale: 0.55 + Math.random() * 0.40,               // 整体适中（0.55–0.95），不再缩成雾
+          speed: 6 + Math.random() * 8,
+          puffs,
+          alpha: 0.62 + Math.random() * 0.22                    // 云整体可见度
         };
       }
       function drawCumulus(c, time, sy) {
         ctx.save();
         ctx.translate(c.x, sy);
-        ctx.scale(c.scale, c.scale * 0.55);          // 纵向再压扁 45% —— 扁平雾气感
-        ctx.globalAlpha = c.alpha;
-        // 单层柔光渲染（不再分暗部/亮部，统一为半透明白霭）
-        for (const b of c.blobs) {
-          const breathe = 1 + 0.06 * Math.sin(time * b.sw + b.ph);   // 更轻微的呼吸
-          const r = b.r * breathe;
-          const g = ctx.createRadialGradient(b.dx, b.dy - r * 0.15, 0, b.dx, b.dy, r);
-          g.addColorStop(0, `rgba(245,248,252,${b.a})`);
-          g.addColorStop(0.5, `rgba(232,238,245,${b.a * 0.6})`);
-          g.addColorStop(1, "rgba(220,228,240,0)");
+        ctx.scale(c.scale, c.scale * 0.62);          // 略压扁：是云形而非球
+        // 柔光体积：上缘亮白、下缘淡影，多段渐变模拟云朵（不画成实心大块）
+        for (const p of c.puffs) {
+          const breathe = 1 + 0.05 * Math.sin(time * p.sw + p.ph);
+          const r = p.r * breathe;
+          const g = ctx.createRadialGradient(p.dx, p.dy - r * 0.22, r * 0.1, p.dx, p.dy, r);
+          g.addColorStop(0,    `rgba(255,255,255,${p.a})`);
+          g.addColorStop(0.55, `rgba(240,245,250,${p.a * 0.85})`);
+          g.addColorStop(1,    `rgba(214,224,238,0)`);
+          ctx.globalAlpha = 1;
           ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(b.dx, b.dy, r, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(p.dx, p.dy, r, 0, Math.PI * 2); ctx.fill();
         }
+        // 一层极淡底边阴影，制造「云有厚度」的错觉（不是大黑块）
+        ctx.globalAlpha = 0.10;
+        ctx.fillStyle = "rgba(150,165,190,1)";
+        for (const p of c.puffs) {
+          const r = p.r * (1 + 0.05 * Math.sin(time * p.sw + p.ph));
+          ctx.beginPath(); ctx.ellipse(p.dx, p.dy + r * 0.42, r * 0.92, r * 0.30, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
         ctx.restore();
       }
       function frame(ts) {
@@ -8331,12 +8537,20 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
       // 启动即预拉取 GitHub Issues（文章跨设备），不阻塞首屏
       if (GH_CMS.enabled) {
+        // 安全兜底：最多等 5 秒，超时也渲染（用本地数据），避免 GitHub 慢/挂时列表一直空白
+        const syncTimeout = setTimeout(() => {
+          if (!ghReady) { ghReady = true; if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute(); }
+        }, 5000);
         fetchPostsFromGitHub().then(list => {
-          if (list && list.length) {
-            GH_POSTS = list;
-            if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
-          }
-        }).catch(() => {});
+          clearTimeout(syncTimeout);
+          ghReady = true;
+          GH_POSTS = list || [];
+          if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
+        }).catch(() => {
+          clearTimeout(syncTimeout);
+          ghReady = true;
+          if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
+        });
       }
     }
 
