@@ -236,6 +236,23 @@
     .nav a.active { color: var(--fg); font-weight: 500; }
     .nav a.active::after { width: 100%; }
 
+    .sync-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; line-height: 1; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--fg-light);
+      background: var(--bg-soft); white-space: nowrap; cursor: default;
+      transition: var(--transition); letter-spacing: 0.3px;
+    }
+    .sync-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .sync-syncing { color: #b08800; border-color: #e8d9a0; }
+    .sync-synced { color: #2e8b57; border-color: #bfe3cd; }
+    .sync-local-only { color: #8a7a4a; border-color: #e3d9bf; }
+    .sync-error { color: #c0392b; border-color: #eccac4; }
+    body.dark .sync-badge { background: #2a2826; }
+    @media (max-width: 600px) {
+      .sync-badge { font-size: 10px; padding: 3px 7px; }
+    }
+
     .theme-toggle {
       background: none;
       border: none;
@@ -1765,6 +1782,7 @@
           <button class="theme-toggle" onclick="toggleTheme()" title="切换夜间模式" id="theme-btn">○</button>
           <button class="admin-btn" id="admin-btn" onclick="toggleAdmin()" title="管理">管理</button>
           <button class="admin-btn" id="settings-btn" onclick="openSettings()" title="设置" style="display:none;">设置</button>
+          <span id="sync-badge" class="sync-badge" style="display:none;" title="文章云端同步状态"></span>
           <nav class="nav">
             <a id="nav-home" onclick="navigate('home')">首页</a>
             <a id="nav-tags" onclick="navigate('tags')">标签</a>
@@ -5344,25 +5362,87 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       localStorage.setItem("hiddenSlugs", JSON.stringify(list));
     }
 
+    // 取文章最新时间（updatedAt 优先，回退 date），用于「最后写入者胜」合并
+    function postTime(p) {
+      if (!p) return "0000-00-00";
+      return (p.updatedAt || p.date || "").slice(0, 10) || "0000-00-00";
+    }
+    // 比较两个副本，返回「更新」的那个（时间相同则云端优先，元数据更全）
+    function newerPost(a, b) {
+      if (!a) return b;
+      if (!b) return a;
+      const ta = postTime(a), tb = postTime(b);
+      if (ta > tb) return a;
+      if (tb > ta) return b;
+      return a._ghSource ? a : b;
+    }
     function getAllPosts() {
       const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const hidden = getHiddenSlugs();
-      // 合并优先级（单一数据源，杜绝「不同地方显示不同文章」）：
-      //   - 内置原版 POSTS 作基线
-      //   - 本地用户文章（含已同步的）一律作基础 —— 即使 GitHub 拉取失败(限流/断网)也不致文章凭空消失
-      //   - 已同步到 GitHub 的文章：仅当 GH_POSTS 成功拉取(非空)时，以 GitHub 为准(覆盖本地/内置副本)
+      // 按 slug 合并三个来源，采用「最后写入者胜」(updatedAt 最新者优先)：
+      //   - 杜绝 ① 本机改了但推送失败 → 云端旧版覆盖本机新版（看不到自己最新文章）
+      //   - 杜绝 ② 某次云端拉取失败(限流/断网) → 已同步文章凭空消失（本地兜底）
       const map = new Map();
-      POSTS.forEach(p => map.set(p.slug, p));
-      userPosts.forEach(p => { map.set(p.slug, p); });                 // 本地文章一律作基础（离线兜底）
-      if (GH_POSTS.length) {
-        GH_POSTS.forEach(p => { map.set(p.slug, p); });                // 仅云端拉取成功才覆盖为权威源
-      }
+      const collect = (p) => {
+        if (!p || !p.slug) return;
+        const cur = map.get(p.slug);
+        map.set(p.slug, cur ? newerPost(cur, p) : p);
+      };
+      POSTS.forEach(collect);
+      userPosts.forEach(collect);
+      GH_POSTS.forEach(collect);   // 云端参与合并；拉取失败为空时自然不覆盖本地
       let all = [...map.values()].filter(p => !hidden.includes(p.slug));
       // 防御性二次去重
       const seen = new Set();
       all = all.filter(p => { if (seen.has(p.slug)) return false; seen.add(p.slug); return true; });
       if (!isAdmin) all = all.filter(p => !p.draft); // 草稿仅管理员可见
       return all;
+    }
+
+    // ===== 云端同步状态（常驻徽章，让「到底同没同步」肉眼可见）=====
+    const syncState = { status: "idle", text: "" };
+    function setSyncState(status, text) {
+      syncState.status = status;
+      syncState.text = text || "";
+      renderSyncBadge();
+    }
+    function renderSyncBadge() {
+      const el = document.getElementById("sync-badge");
+      if (!el) return;
+      if (!syncState.text) { el.style.display = "none"; return; }
+      el.style.display = "inline-flex";
+      el.textContent = syncState.text;
+      el.className = "sync-badge sync-" + syncState.status;
+    }
+    // 自愈：启动拉取云端后，把「本机比云端更新、或本机有但未上云」的非草稿文章补推上去，
+    // 解决「上次编辑推送失败/断网 → 其他设备一直看不到」的问题
+    async function healPendingSync() {
+      const token = localStorage.getItem(GH_TOKEN_KEY);
+      if (!token || !isAdmin) return;
+      const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]").filter(p => !p.draft);
+      if (!local.length) return;
+      const ghBySlug = new Map(GH_POSTS.map(p => [p.slug, p]));
+      const pending = local.filter(p => {
+        const g = ghBySlug.get(p.slug);
+        if (!g) return true;                  // 云端没有 → 需创建
+        return postTime(p) > postTime(g);      // 本机更新 → 需更新
+      });
+      if (!pending.length) return;
+      let done = 0;
+      for (const p of pending) {
+        const res = await pushPostToGitHub(p, true);   // 静默，不弹 alert
+        if (res && res.ok) {
+          done++;
+          const ups = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+          const i = ups.findIndex(x => x.slug === p.slug);
+          if (i >= 0) { ups[i]._ghIssue = p._ghIssue; ups[i]._ghSource = true; localStorage.setItem(STORAGE_KEY, JSON.stringify(ups)); }
+        }
+      }
+      GH_POSTS = await fetchPostsFromGitHub();
+      if (done) {
+        setSyncState("synced", "云端已同步");
+        if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
+      }
     }
 
     function saveUserPost(post) {
@@ -5488,10 +5568,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         });
     }
     // 管理员用本机 PAT 创建/更新 Issue；返回是否成功
-    async function pushPostToGitHub(post) {
+    async function pushPostToGitHub(post, silent) {
       const token = localStorage.getItem(GH_TOKEN_KEY);
       if (!token) {
-        alert("未配置 GitHub Token：文章仅存本机。\n请在「设置 → GitHub 同步」粘贴 Token，发布后才会跨设备可见。");
+        if (!silent) alert("未配置 GitHub Token：文章仅存本机。\n请在「设置 → GitHub 同步」粘贴 Token，发布后才会跨设备可见。");
         return { ok: false };
       }
       // 方案 A：先抽 base64 图片 → 传仓库 images/ → 换成 raw 短链接，再发 Issue
@@ -5519,7 +5599,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             method: "PATCH", headers,
             body: JSON.stringify({ title: post.title, body: safeBody, labels })
           });
-          if (!r.ok) { alert("更新 Issue 失败：" + r.status); return false; }
+          if (!r.ok) { if (!silent) alert("更新 Issue 失败：" + r.status); return { ok: false, status: r.status }; }
         } else {
           // 先尝试带标签创建；若 422（常见：标签不存在），降级为不带标签重试
           const payload = { title: post.title, body: safeBody, labels };
@@ -5537,11 +5617,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           if (!res.ok) {
             let errBody = {};
             try { errBody = await res.json(); } catch(e) {}
-            alert("同步失败：" + res.status + "\n" +
+            if (!silent) alert("同步失败：" + res.status + "\n" +
               (errBody.message || "") + "\n" +
               (errBody.errors ? JSON.stringify(errBody.errors) : "") +
               "\n\n可能原因：Token 无该仓库写权限 / 标签不存在 / 仓库禁用了 Issues。");
-            return false;
+            return { ok: false, status: res.status };
           }
           const data = await res.json();
           post._ghIssue = data.number;
@@ -5966,16 +6046,26 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       handleRoute();
       // 异步同步到 GitHub（仅非草稿；草稿留本地，避免公开仓库泄露未定稿）
       if (GH_CMS.enabled && isAdmin && !draft) {
-        pushPostToGitHub(post).then(ok => {
+        pushPostToGitHub(post).then(res => {
+          const ok = res && res.ok;
           if (ok) {
             // 把 issue 号存回本地，便于下次编辑更新同一篇
             const ups = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
             const i = ups.findIndex(p => p.slug === post.slug);
             if (i >= 0) { ups[i]._ghIssue = post._ghIssue; ups[i]._ghSource = true; localStorage.setItem(STORAGE_KEY, JSON.stringify(ups)); }
             // 刷新 GitHub 缓存并重渲染，使任意设备立即可见
-            fetchPostsFromGitHub().then(list => { GH_POSTS = list; if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute(); });
+            fetchPostsFromGitHub().then(list => { GH_POSTS = list; setSyncState("synced", "云端已同步"); if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute(); });
+            showToast("✅ 已同步到云端，手机端与其他访客立即可见");
+          } else {
+            // 推送失败（Token 失效/无写权限/限流/网络）：文章已存本机，但云端没有
+            showToast("⚠️ 仅存本机：云端同步失败，请检查 GitHub Token 是否有效、有写权限或网络");
+            setSyncState("error", "同步失败·仅本机");
           }
         });
+      } else if (!draft) {
+        // 未启用云端同步：明确告知用户文章只在本机
+        showToast("📱 仅存本机：未配置 GitHub 同步，手机端和其他人暂时看不到");
+        setSyncState("local-only", "仅本机");
       }
     }
 
@@ -8586,18 +8676,28 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
       // 启动即预拉取 GitHub Issues（文章跨设备），不阻塞首屏
       if (GH_CMS.enabled) {
+        setSyncState("syncing", "同步中…");
         // 安全兜底：最多等 5 秒，超时也渲染（用本地数据），避免 GitHub 慢/挂时列表一直空白
         const syncTimeout = setTimeout(() => {
-          if (!ghReady) { ghReady = true; if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute(); }
+          if (!ghReady) {
+            ghReady = true;
+            setSyncState(GH_POSTS.length ? "synced" : "local-only", GH_POSTS.length ? "云端已同步" : "仅本机");
+            if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
+          }
         }, 5000);
         fetchPostsFromGitHub().then(list => {
           clearTimeout(syncTimeout);
           ghReady = true;
           GH_POSTS = list || [];
+          if (GH_POSTS.length) setSyncState("synced", "云端已同步");
+          else setSyncState("local-only", "仅本机");
+          // 自愈：把本机比云端更新的文章补推上去（上次推送失败/断网时遗留）
+          healPendingSync();
           if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
         }).catch(() => {
           clearTimeout(syncTimeout);
           ghReady = true;
+          setSyncState("local-only", "仅本机");
           if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
         });
       }
