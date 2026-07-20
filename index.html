@@ -61,7 +61,7 @@
       font-size: 16px;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      overflow-x: hidden;
+      overflow-x: clip; /* clip 不创建滚动容器，修复 iOS Safari 上 sticky 顶栏失效/抖动（原 hidden 会建滚动容器） */
     }
     /* 纸张纹理 */
     body::before {
@@ -1502,7 +1502,7 @@
     /* ===== 编辑模式按钮 ===== */
     .edit-fab {
       position: fixed;
-      bottom: 24px; right: 24px;
+      bottom: calc(24px + env(safe-area-inset-bottom)); right: calc(24px + env(safe-area-inset-right));
       width: 48px; height: 48px;
       border-radius: 50%;
       background: var(--accent);
@@ -1688,7 +1688,7 @@
 
     /* 天气状态指示（只读，非交互） */
     #weather-status {
-      position: fixed; left: 16px; bottom: 16px; z-index: 210;
+      position: fixed; left: calc(16px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 210;
       font-size: 12px; color: var(--fg-muted);
       background: var(--bg-card); border: 1px solid var(--border);
       padding: 4px 11px; border-radius: 999px;
@@ -1712,7 +1712,7 @@
     /* ===== 响应式 ===== */
     @media (max-width: 640px) {
       .hero { padding-top: 16px; margin-bottom: 28px; }
-      .hero h1 { font-size: 42px; letter-spacing: 4px; }
+      .hero h1 { font-size: 42px; letter-spacing: 4px; transform: rotate(-1.5deg); }
       .hero .hero-sub { font-size: 15px; margin-top: 8px; }
       .hero .hero-source { font-size: 11px; margin-top: 4px; }
       .post-detail h1 { font-size: 22px; }
@@ -1731,6 +1731,12 @@
       .nq-mark { font-size: 17px; }
       .modal { padding: 16px; }
       .search-bar input { font-size: 14px; }
+    }
+
+    /* 尊重「减少动态效果」系统偏好：关闭持续装饰动画，防低端机掉帧、护眼（不影响正文内容） */
+    @media (prefers-reduced-motion: reduce) {
+      .hero h1, .hero h1 .char, .bg-decoration::before, .bg-decoration::after { animation: none !important; }
+      * { scroll-behavior: auto !important; }
     }
 
     /* 文章评论（Twikoo）精简：只留昵称(ID)一栏，隐藏邮箱与网址 */
