@@ -5343,12 +5343,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const hidden = getHiddenSlugs();
       // 合并优先级（单一数据源，杜绝「不同地方显示不同文章」）：
       //   - 内置原版 POSTS 作基线
-      //   - 未同步到 GitHub 的本地文章（草稿/待发布）本地优先
-      //   - 已同步到 GitHub 的文章：无论内置还是用户创建，一律以 GitHub 为准（含内置文章发布后的更新）
+      //   - 本地用户文章（含已同步的）一律作基础 —— 即使 GitHub 拉取失败(限流/断网)也不致文章凭空消失
+      //   - 已同步到 GitHub 的文章：仅当 GH_POSTS 成功拉取(非空)时，以 GitHub 为准(覆盖本地/内置副本)
       const map = new Map();
       POSTS.forEach(p => map.set(p.slug, p));
-      userPosts.forEach(p => { if (!p._ghIssue) map.set(p.slug, p); });  // 仅未同步的本地文章优先
-      GH_POSTS.forEach(p => { map.set(p.slug, p); });                    // 已同步文章以 GitHub 为准（覆盖本地/内置副本）
+      userPosts.forEach(p => { map.set(p.slug, p); });                 // 本地文章一律作基础（离线兜底）
+      if (GH_POSTS.length) {
+        GH_POSTS.forEach(p => { map.set(p.slug, p); });                // 仅云端拉取成功才覆盖为权威源
+      }
       let all = [...map.values()].filter(p => !hidden.includes(p.slug));
       // 防御性二次去重
       const seen = new Set();
@@ -5445,11 +5447,18 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     // 公开拉取带 blog 标签的 issues（无需登录，跨设备可读）
     async function fetchPostsFromGitHub() {
       if (!GH_CMS.enabled) return [];
+      const doFetch = () => fetch(`${GH_CMS.apiBase}/issues?state=open&per_page=100&labels=${encodeURIComponent(GH_CMS.label)}`, {
+        headers: { "Accept": "application/vnd.github+json" }
+      });
+      let res = null;
       try {
-        const res = await fetch(`${GH_CMS.apiBase}/issues?state=open&per_page=100&labels=${encodeURIComponent(GH_CMS.label)}`, {
-          headers: { "Accept": "application/vnd.github+json" }
-        });
-        if (!res.ok) return [];
+        res = await doFetch();
+      } catch (e) {
+        // 瞬时网络抖动：仅对「网络错误」(非限流/无权限)重试一次，避免加重限流
+        await new Promise(r => setTimeout(r, 1200));
+        try { res = await doFetch(); } catch (_) { return []; }
+      }
+      if (!res || !res.ok) return [];   // 限流/无权限 → 交由 getAllPosts 的本地兜底，文章不凭空消失
         const issues = await res.json();
         if (!Array.isArray(issues)) return [];
         return issues.filter(i => !i.pull_request).map(issue => {
@@ -5471,7 +5480,6 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             _ghSource: true
           };
         });
-      } catch (e) { return []; }
     }
     // 管理员用本机 PAT 创建/更新 Issue；返回是否成功
     async function pushPostToGitHub(post) {
@@ -5894,15 +5902,22 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const ed = document.getElementById("edit-content");
       if (!ed) return "";
       // 清理 contenteditable 产生的残留对齐样式，防止段落意外居中
+      // ⚠️ 必须在「脱离文档的临时节点」上做清理+转换，绝不能写回 ed.innerHTML：
+      //    自动保存每 5 秒调用一次本函数，若写回在线编辑器会重置 DOM、打断中文输入法组词、
+      //    光标跳回开头 —— 这正是「编辑器没法正常使用」的根因。
       let html = ed.innerHTML;
       html = html.replace(/style="[^"]*text-align\s*:\s*center[^"]*"/gi, '');
       html = html.replace(/style="[^"]*text-align\s*:\s*(left|right|justify)[^"]*"/gi, '');
       html = html.replace(/<div[^>]*>\s*<\/div>/gi, '');   // 空占位 div
-      ed.innerHTML = html;
       const td = getTurndown();
       let md;
-      if (td) md = td.turndown(ed.innerHTML).trim();
-      else md = (ed.innerText || "").trim(); // turndown 未加载时降级为纯文本
+      if (td) {
+        const tmp = document.createElement("div");
+        tmp.innerHTML = html;
+        md = td.turndown(tmp).trim();
+      } else {
+        md = (ed.innerText || "").trim(); // turndown 未加载时降级为纯文本
+      }
       // 清理空行
       return md.replace(/\n{3,}/g, "\n\n");
     }
