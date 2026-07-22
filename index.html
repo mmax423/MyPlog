@@ -1757,6 +1757,22 @@
     }
 
     /* 文章评论（Twikoo）精简：只留昵称(ID)一栏，隐藏邮箱与网址 */
+    /* 关键：邮箱/网址是 input，可见文字在 placeholder 里 → 用属性选择器直接命中输入框 */
+    #tcomment input[placeholder*="邮箱"],
+    #tcomment input[placeholder*="网址"],
+    #tcomment input[placeholder*="邮件"],
+    #tcomment input[placeholder*="mail" i],
+    #tcomment input[placeholder*="http" i],
+    #tcomment input[name="mail"],
+    #tcomment input[name="link"] { display: none !important; }
+    /* 支持 :has() 的浏览器：连同输入框的外层容器一起隐藏，避免留白 */
+    #tcomment .el-input:has(input[placeholder*="邮箱"]),
+    #tcomment .el-input:has(input[placeholder*="网址"]),
+    #tcomment .el-input:has(input[placeholder*="邮件"]),
+    #tcomment .el-input:has(input[placeholder*="mail" i]),
+    #tcomment .el-input:has(input[placeholder*="http" i]),
+    #tcomment .tk-input:has(input[name="mail"]),
+    #tcomment .tk-input:has(input[name="link"]) { display: none !important; }
     .tk-input-mail, .tk-input-link, .tk-row[data-name="mail"], .tk-row[data-name="link"] { display: none !important; }
     #tcomment .el-textarea__inner { min-height: 120px; }
   </style>
@@ -5187,25 +5203,38 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               path: "post/" + slug,   // 按文章 slug 区分评论串，避免 hash 路由下混在一起
               lang: "zh-CN",
             });
-            // Twikoo 渲染完成后移除邮箱/网址字段（仅保留昵称）
-            // requiredMeta 在 1.6.x 不可靠，用 DOM 操作确保只留昵称
-            setTimeout(function stripCommentFields() {
+            // 移除邮箱/网址字段，只留昵称(ID)+内容。
+            // 关键修正：邮箱/网址是 <input>，可见文字在 placeholder（占位提示）里，
+            // input.textContent 恒为空 —— 旧版按 textContent 匹配永远命中不到，故失效。
+            // 正解：按 placeholder / name 定位 input，隐藏其外层容器；并用 MutationObserver
+            // 持续兜住 Twikoo 的异步渲染与「点开才出现输入框」的时机。
+            var stripComment = function() {
               var container = document.querySelector("#tcomment");
               if (!container) return;
-              var rows = container.querySelectorAll(".tk-row, .el-form-item, [class*=input]");
-              rows.forEach(function(row) {
-                var t = (row.textContent || "").trim();
-                if ((t.indexOf("邮箱") !== -1 && t.indexOf("昵称") === -1) ||
-                    (t.indexOf("网址") !== -1 && t.indexOf("昵称") === -1)) {
-                  row.style.display = "none";
+              var inputs = container.querySelectorAll("input");
+              inputs.forEach(function(inp) {
+                var ph = (inp.getAttribute("placeholder") || "").toLowerCase();
+                var nm = (inp.getAttribute("name") || "").toLowerCase();
+                var hit =
+                  ph.indexOf("邮箱") !== -1 || ph.indexOf("邮件") !== -1 || ph.indexOf("网址") !== -1 ||
+                  ph.indexOf("mail") !== -1 || ph.indexOf("http") !== -1 ||
+                  nm === "mail" || nm === "link";
+                if (hit) {
+                  var wrap = inp.closest(".el-input") || inp.closest(".tk-input") || inp.parentElement;
+                  (wrap || inp).style.display = "none";
                 }
               });
-              [".tk-row[data-name=mail]", ".tk-row[data-name=link]",
-               ".tk-input-mail", ".tk-input-link"].forEach(function(sel) {
-                try { container.querySelectorAll(sel).forEach(function(el) { el.style.display = "none"; }); }
-                catch(e) {}
-              });
-            }, 800);
+            };
+            // 立即尝试一次 + 短轮询覆盖首帧
+            stripComment();
+            [200, 500, 1000, 1800].forEach(function(d){ setTimeout(stripComment, d); });
+            // 持续监听：用户点开评论框、切换文章重渲染时都会再次清理
+            try {
+              var mo = new MutationObserver(function(){ stripComment(); });
+              mo.observe(el, { childList: true, subtree: true });
+              // 3 分钟后停止观察，避免长期占用
+              setTimeout(function(){ mo.disconnect(); }, 180000);
+            } catch(e) {}
           } catch (e) { console.error("Twikoo init failed", e); }
         } else if (tries++ < 25) {
           setTimeout(tryInit, 200);  // SDK 尚未加载完，轮询等待
