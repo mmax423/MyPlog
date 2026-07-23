@@ -6371,7 +6371,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <button class="btn btn-secondary" onclick="refreshGithubPosts()">立即拉取文章</button>
             <button class="btn btn-primary" onclick="publishAllToGithub()">🚀 一键发布本机文章</button>
           </div>
-          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">「一键发布」会把本机所有<strong>非草稿</strong>文章推送到 GitHub Issues（<code>updatedAt</code> 刷新为今天，自动进入「最新」），任意设备刷新即见；草稿仍留本机不公开。</p>
+          <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">「一键发布」会把本机所有<strong>非草稿</strong>文章推送到 GitHub Issues（<code>updatedAt</code> 刷新为今天），任意设备刷新即见；草稿仍留本机不公开。「最新」以发布日期为准，7 日内发布的才算。</p>
           <p style="font-size:12px;color:var(--fg-light);margin:8px 0 0;">获取 Token：GitHub → 右上角头像 → Settings → Developer settings → Personal access tokens。Fine-grained：选本仓库 → 开 <code>Issues: Read and Write</code> 与 <code>Contents: Read and Write</code>。Classic：勾 <code>public_repo</code>。</p>
         </div>
         <div class="settings-section">
@@ -6477,7 +6477,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const list = await fetchPostsFromGitHub();
       GH_POSTS = list;
       if (!document.getElementById("modal-overlay").classList.contains("open")) handleRoute();
-      let msg = `发布完成 ✅\n成功 ${ok} 篇，失败 ${fail} 篇。\n已同步的文章现在所有人可见，且进入「最新」。\n（草稿仍留本机，不会公开）`;
+      let msg = `发布完成 ✅\n成功 ${ok} 篇，失败 ${fail} 篇。\n已同步的文章现在所有人可见。\n（草稿仍留本机，不会公开）`;
       if (imgUploadedTotal) msg += `\n🖼️ 已上传 ${imgUploadedTotal} 张图片到仓库 images/`;
       if (imgFailedTotal) msg += `\n⚠️ ${imgFailedTotal} 张图片上传失败（需给 Token 加 Contents: Read and Write 权限）`;
       if (truncatedList.length) {
@@ -6674,9 +6674,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       return Array.from(catMap.entries()).map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count);
     }
 
-    // 是否在「最新」时效期内（默认 3 天）：优先按 updatedAt，缺则退回 date
-    function isRecentlyUpdated(post, days = 3) {
-      const u = post.updatedAt || post.date;
+    // 是否在「最新」时效期内（默认 7 天）：以【发布日期 date】为准。
+    // 注意：不能用 updatedAt —— 旧精选文被重新同步/一键发布时会刷新 updatedAt，
+    // 否则会误判为「最新」。标准：发布日期在当日往前数 7 日内 = 最新。
+    function isRecentlyUpdated(post, days = 7) {
+      const u = post.date;
       if (!u) return false;
       const d = new Date(u + "T00:00:00");
       if (isNaN(d.getTime())) return false;
@@ -6699,15 +6701,13 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         );
       }
       return posts.sort((a, b) => {
-        // 三级排序：最新(3天内更新) > 精选(置顶) > 普通
-        const rank = p => (!p.pinned && isRecentlyUpdated(p, 3)) ? 2 : (p.pinned ? 1 : 0);
+        // 三级排序：最新(7日内发布) > 精选(置顶但非最新) > 普通
+        // 精选+最新同时存在的文章，rank=2，优先归入【最新】
+        const rank = p => (isRecentlyUpdated(p, 7)) ? 2 : (p.pinned ? 1 : 0);
         const ra = rank(a), rb = rank(b);
         if (ra !== rb) return rb - ra;
-        // 同组内排序：最新组按更新时间倒序，其余按日期
-        if (ra === 2) {
-          const ua = a.updatedAt || a.date || "", ub = b.updatedAt || b.date || "";
-          return ua < ub ? 1 : -1;
-        }
+        // 同组内排序：最新组按发布日期倒序，其余按日期
+        if (ra === 2) return a.date < b.date ? 1 : -1;
         return sortMode === "desc" ? (a.date < b.date ? 1 : -1) : (a.date > b.date ? 1 : -1);
       });
     }
@@ -7043,6 +7043,22 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
       const all = getFilteredPosts();
 
+      // 默认视图（无筛选/搜索）三栏：1.【最新】7日内发布(含精选+最新，优先) → 2.【精选】置顶但非最新 → 3.【以往其它文章】
+      const isDefaultView = !currentSearch && !currentFilter.category && !currentFilter.tag && !currentFilter.featured;
+      const latestPosts = isDefaultView ? all.filter(p => isRecentlyUpdated(p, 7)) : [];
+      const featuredPosts = isDefaultView ? all.filter(p => p.pinned && !isRecentlyUpdated(p, 7)) : [];
+      const regularPosts = isDefaultView ? all.filter(p => !p.pinned && !isRecentlyUpdated(p, 7)) : all;
+
+      // 卡片网格模式用的单卡渲染（徽标走 meta 行，与列表视图一致）
+      const gridCard = (post, i) => `
+        <div class="featured-card reveal ${post.pinned ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
+          <div class="post-meta"><time>${formatDate(post.date)}</time><span>·</span>${post.category || "未分类"}<span>·</span><span>${post.tags.length} 个标签</span>${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}${isRecentlyUpdated(post, 7) ? `<span class="latest-badge">● 最新</span>` : ""}</div>
+          <h3>${escapeHtml(post.title)}</h3>
+          <p class="excerpt">${displayExcerpt(post)}</p>
+          <div class="post-tags">${post.tags.slice(0,4).map(t => `<span class="post-tag">#${t}</span>`).join("")}${post.tags.length > 4 ? `<span class="post-tag">+${post.tags.length-4}</span>` : ""}</div>
+          ${isAdmin ? `<div style="margin-top:10px;"><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${post.pinned ? '✕ 取消精选' : '★ 设为精选'}</button></div>` : ""}
+        </div>`;
+
       let info = "";
       if (currentSearch) {
         info = `<div class="filter-result-info">搜索「${escapeHtml(currentSearch)}」 · 共 ${all.length} 篇 <span class="filter-clear" onclick="clearSearch()">清除搜索</span></div>`;
@@ -7062,31 +7078,34 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         </div>`;
       }
 
-      // 卡片网格模式
-      if (viewMode === 'grid' && !currentSearch && !currentFilter.category && !currentFilter.tag && !currentFilter.featured) {
-        const gridHTML = `<div class="post-grid">` +
-          all.map((post, i) => `
-            <div class="featured-card reveal ${post.pinned ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
-              <div class="post-meta"><time>${formatDate(post.date)}</time><span>·</span>${post.category || "未分类"}<span>·</span><span>${post.tags.length} 个标签</span></div>
-              <h3>${escapeHtml(post.title)}</h3>
-              ${post.pinned ? `<div class="card-badge pin-badge">★ 精选</div>` : ""}${isRecentlyUpdated(post, 3) ? `<div class="card-badge latest-badge">● 最新</div>` : ""}
-              <p class="excerpt">${displayExcerpt(post)}</p>
-              <div class="post-tags">${post.tags.slice(0,4).map(t => `<span class="post-tag">#${t}</span>`).join("")}${post.tags.length > 4 ? `<span class="post-tag">+${post.tags.length-4}</span>` : ""}</div>
-              ${isAdmin ? `<div style="margin-top:10px;"><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${post.pinned ? '✕ 取消精选' : '★ 设为精选'}</button></div>` : ""}
-            </div>
-          `).join("") + `</div>` +
-          (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
+      // 卡片网格模式（同样套用三栏结构）
+      if (viewMode === 'grid' && isDefaultView) {
+        let gridHTML = "";
+        let goff = 0;
+        if (latestPosts.length) {
+          gridHTML += `<div class="section-title"><h2>最新</h2><span class="count">${latestPosts.length}</span><span class="line"></span></div>`;
+          gridHTML += `<div class="post-grid">` + latestPosts.map((post, i) => gridCard(post, i)).join("") + `</div>`;
+          goff += latestPosts.length;
+          if (featuredPosts.length || regularPosts.length) gridHTML += `<div class="divider"><span>· · ·</span></div>`;
+        }
+        if (featuredPosts.length) {
+          gridHTML += `<div class="section-title"><h2>精选</h2><span class="count">${featuredPosts.length}</span><span class="line"></span></div>`;
+          gridHTML += `<div class="post-grid">` + featuredPosts.map((post, i) => gridCard(post, i)).join("") + `</div>`;
+          goff += featuredPosts.length;
+          if (regularPosts.length) gridHTML += `<div class="divider"><span>· · ·</span></div>`;
+        }
+        if (regularPosts.length) {
+          gridHTML += `<div class="section-title"><h2>以往其它文章</h2><span class="count">${regularPosts.length}</span><span class="line"></span></div>`;
+          gridHTML += `<div class="post-grid">` + regularPosts.map((post, i) => gridCard(post, i)).join("") + `</div>`;
+        }
+        gridHTML += (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
         container.innerHTML = info + gridHTML;
         setTimeout(observeReveal, 30);
         return;
       }
 
       // 默认列表模式
-      // 默认视图下（无筛选/搜索）顺序：1.最新(3天内更新) → 2.精选(置顶) → 3.其他(按时间)，组间加分隔线
-      const isDefaultView = !currentSearch && !currentFilter.category && !currentFilter.tag && !currentFilter.featured;
-      const featuredPosts = isDefaultView ? all.filter(p => p.pinned) : [];
-      const latestPosts = isDefaultView ? all.filter(p => !p.pinned && isRecentlyUpdated(p, 3)) : [];
-      const regularPosts = isDefaultView ? all.filter(p => !p.pinned && !isRecentlyUpdated(p, 3)) : all;
+      // 默认列表模式：三栏分组（latestPosts / featuredPosts / regularPosts）已在上方计算
 
       let listHTML = "";
       // 统一卡片渲染：★精选 / ●最新 徽标按文章状态自动判定
@@ -7097,7 +7116,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
             <span>${post.tags.length} 个标签</span>
             ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
-            ${isRecentlyUpdated(post, 3) ? `<span class="latest-badge">● 最新</span>` : ""}
+            ${isRecentlyUpdated(post, 7) ? `<span class="latest-badge">● 最新</span>` : ""}
             ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
             ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${post.pinned ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
           </div>
@@ -7109,19 +7128,24 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
           ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
         </div>`;
-      // 默认视图顺序：1.最新(3天内更新) → 2.精选(置顶) → 3.其他(按时间)
+      // 默认视图顺序：1.【最新】 → 2.【精选】 → 3.【以往其它文章】，每栏带标题
       let offset = 0;
       if (latestPosts.length) {
+        listHTML += `<div class="section-title"><h2>最新</h2><span class="count">${latestPosts.length}</span><span class="line"></span></div>`;
         listHTML += latestPosts.map((post, i) => buildCard(post, i, offset)).join("");
         offset += latestPosts.length;
         if (featuredPosts.length || regularPosts.length) listHTML += `<div class="divider"><span>· · ·</span></div>`;
       }
       if (featuredPosts.length) {
+        listHTML += `<div class="section-title"><h2>精选</h2><span class="count">${featuredPosts.length}</span><span class="line"></span></div>`;
         listHTML += featuredPosts.map((post, i) => buildCard(post, i, offset)).join("");
         offset += featuredPosts.length;
         if (regularPosts.length) listHTML += `<div class="divider"><span>· · ·</span></div>`;
       }
-      listHTML += regularPosts.map((post, i) => buildCard(post, i, offset)).join("");
+      if (regularPosts.length) {
+        listHTML += `<div class="section-title"><h2>以往其它文章</h2><span class="count">${regularPosts.length}</span><span class="line"></span></div>`;
+        listHTML += regularPosts.map((post, i) => buildCard(post, i, offset)).join("");
+      }
       container.innerHTML = info + listHTML + (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
 
       setTimeout(observeReveal, 30);
