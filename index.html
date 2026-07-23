@@ -1759,8 +1759,8 @@
     /* 文章评论（Twikoo）精简：只留昵称(ID)一栏，隐藏邮箱与网址 */
     /* Twikoo 1.6.x 的结构：.tk-meta-input 里有 3 个 .el-input，顺序固定为 昵称/邮箱/网址 */
     /* 最稳方案：直接隐藏第 2、3 个，不再依赖 placeholder/name 匹配（实测旧方案未命中） */
-    #tcomment .tk-meta-input .el-input:nth-child(2),
-    #tcomment .tk-meta-input .el-input:nth-child(3) { display: none !important; }
+    #tcomment .tk-meta-input > *:nth-child(2),
+    #tcomment .tk-meta-input > *:nth-child(3) { display: none !important; }
     /* 兜底：若 nth-child 因未来版本顺序改变失效，仍按 name/placeholder 隐藏 input 自身 */
     #tcomment input[name="mail"],
     #tcomment input[name="link"],
@@ -5204,10 +5204,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               // 方案 A（首选）：按顺序隐藏邮箱、网址列
               var meta = container.querySelector(".tk-meta-input");
               if (meta) {
-                var cols = meta.querySelectorAll(":scope > .el-input");
-                if (cols.length >= 2) {
-                  if (cols[1]) cols[1].style.display = "none";
-                  if (cols[2]) cols[2].style.display = "none";
+                // 直接子元素顺序固定：昵称 / 邮箱 / 网址。用 children 索引，规避 el-form-item 包裹导致 nth-child 失效
+                var kids = meta.children;
+                if (kids.length >= 3) {
+                  kids[1].style.display = "none";
+                  kids[2].style.display = "none";
                 }
               }
               // 方案 B（兜底）：按 name/placeholder 隐藏单个 input
