@@ -5255,8 +5255,16 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     const TWIKOO_KEY = "zhuer_twikoo_env";
     const TWIKOO_DEFAULT = "https://mongodburi.netlify.app/.netlify/functions/twikoo";
     const TWIKOO_CONFIG = {
-      get enabled() { return !!(localStorage.getItem(TWIKOO_KEY) || TWIKOO_DEFAULT).trim(); },
-      get envId() { return (localStorage.getItem(TWIKOO_KEY) || TWIKOO_DEFAULT).trim(); }
+      // 未配置或误填非 URL（如 token）时，自动回退默认后端，避免评论区崩溃
+      get _raw() { return (localStorage.getItem(TWIKOO_KEY) || "").trim(); },
+      get enabled() { return !!this.envId; },
+      get envId() {
+        const v = this._raw;
+        if (!v) return TWIKOO_DEFAULT;
+        if (/^https?:\/\//.test(v)) return v;
+        console.warn("[Twikoo] 本地 envId 不是合法 URL，已回退默认后端");
+        return TWIKOO_DEFAULT;
+      }
     };
     let _walineLoaded = false, _walineClient = null;
     (function loadWalineClient() {
@@ -6414,8 +6422,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       if (!el) return;
       const v = el.value.trim();
       if (v) localStorage.setItem(TWIKOO_KEY, v); else localStorage.removeItem(TWIKOO_KEY);
-      TWIKOO_CONFIG.enabled = !!v;
-      alert("Twikoo 环境" + (v ? "已保存并启用 ✅\n打开任意文章即可看到评论区" : "已清除（评论区将显示占位提示）"));
+      alert("Twikoo 环境" + (v ? "已保存并启用 ✅\n打开任意文章即可看到评论区" : "已回退默认后端（评论区照常显示）"));
       // 若当前正在文章页，重新渲染以挂载/卸载评论区
       if (location.hash.startsWith("#/post/")) { closeModal(); handleRoute(); }
     }
