@@ -1771,7 +1771,9 @@
     #tcomment .tk-meta-input > .tk-row > *:nth-child(2),
     #tcomment .tk-meta-input > .tk-row > *:nth-child(3),
     #tcomment .el-input-group:nth-child(2),
-    #tcomment .el-input-group:nth-child(3) { display: none !important; }
+    #tcomment .el-input-group:nth-child(3),
+    /* 终极兜底：.tk-meta-input 下除第一个 .el-input-group 外全藏（根据用户截图三栏水平排列） */
+    #tcomment .tk-meta-input .el-input-group:not(:first-of-type) { display: none !important; }
     #tcomment input[placeholder*="邮箱"],
     #tcomment input[placeholder*="网址"],
     #tcomment input[placeholder*="mail"],
@@ -5211,8 +5213,13 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               if (!container) return;
               var HIT = /邮箱|邮件|e[\-]?mail|网址|网站|站点|url|link|http/i;
               var HIDE = function(el) { if (el) el.style.setProperty("display", "none", "important"); };
-              // 暴力向上遍历：从含"邮箱/网址"文字的节点出发，向上找第一个含 input 的整栏容器，整栏藏掉
               var meta = container.querySelector(".tk-meta-input") || container;
+
+              // 终极兜底：根据截图，.tk-meta-input 下水平排列 3 个 .el-input-group，
+              // 第一个是昵称，其余（邮箱/网址）全部隐藏。不依赖 nth-child 顺序。
+              meta.querySelectorAll(".el-input-group:not(:first-of-type)").forEach(HIDE);
+
+              // 暴力向上遍历：从含"邮箱/网址"文字的节点出发，向上找第一个含 input 的整栏容器，整栏藏掉
               meta.querySelectorAll("*").forEach(function(node) {
                 var t = (node.textContent || "").trim();
                 if (t.length > 0 && t.length <= 10 && HIT.test(t)) {
@@ -5223,6 +5230,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
                   }
                 }
               });
+
               // name/placeholder 兜底
               container.querySelectorAll("input").forEach(function(inp) {
                 var ph = (inp.getAttribute("placeholder") || "");
