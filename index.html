@@ -5526,10 +5526,9 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             body: JSON.stringify({ message: `add image ${filename}`, content: b64, branch: "main" })
           });
           if (res.ok) {
-            const data = await res.json();
-            const url = (data.content && data.content.download_url)
-              ? data.content.download_url
-              : `https://raw.githubusercontent.com/${GH_CMS.repo}/main/images/${filename}`;
+            await res.json();
+            // 用 jsDelivr CDN 地址（国内多可访问）替代被墙的 raw.githubusercontent.com
+            const url = `https://cdn.jsdelivr.net/gh/${GH_CMS.repo}@main/images/${filename}`;
             result = result.split(dataUri).join(url);
             uploaded++;
           } else {
@@ -6588,6 +6587,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         // 库尚未加载（defer 延迟），降级为纯文本 + 基本转义
         return content.replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
       }
+      // 显示级 URL 改写：把被墙的 GitHub 原图地址转成 jsDelivr CDN（国内多可访问）。
+      // 覆盖老文章里已写死的 raw 地址，用户无需回去重发。
+      content = content
+        .replace(/https:\/\/raw\.githubusercontent\.com\/([^/\s)]+\/[^/\s)]+)\/([^/\s)]+)\//g, 'https://cdn.jsdelivr.net/gh/$1@$2/')
+        .replace(/https:\/\/github\.com\/([^/\s)]+\/[^/\s)]+)\/raw\/([^/\s)]+)\//g, 'https://cdn.jsdelivr.net/gh/$1@$2/');
       const rawHtml = marked.parse(content);
       // 清理编辑器残留的所有居中/对齐样式（contenteditable 注入的）
       let cleanHtml = rawHtml
@@ -7065,7 +7069,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <div class="featured-card reveal ${post.pinned ? 'is-featured' : ''}" style="transition-delay:${Math.min(i * 0.04, 0.4)}s" onclick="navigate('post','${post.slug}')">
               <div class="post-meta"><time>${formatDate(post.date)}</time><span>·</span>${post.category || "未分类"}<span>·</span><span>${post.tags.length} 个标签</span></div>
               <h3>${escapeHtml(post.title)}</h3>
-              ${post.pinned ? `<div class="card-badge pin-badge">★ 精选</div>` : (isRecentlyUpdated(post, 3) ? `<div class="card-badge latest-badge">● 最新</div>` : "")}
+              ${post.pinned ? `<div class="card-badge pin-badge">★ 精选</div>` : ""}${isRecentlyUpdated(post, 3) ? `<div class="card-badge latest-badge">● 最新</div>` : ""}
               <p class="excerpt">${displayExcerpt(post)}</p>
               <div class="post-tags">${post.tags.slice(0,4).map(t => `<span class="post-tag">#${t}</span>`).join("")}${post.tags.length > 4 ? `<span class="post-tag">+${post.tags.length-4}</span>` : ""}</div>
               ${isAdmin ? `<div style="margin-top:10px;"><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${post.pinned ? '✕ 取消精选' : '★ 设为精选'}</button></div>` : ""}
@@ -7093,7 +7097,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             ${post.category ? `<span>${post.category}</span><span>·</span>` : ""}
             <span>${post.tags.length} 个标签</span>
             ${post.pinned ? `<span class="pin-badge">★ 精选</span>` : ""}
-            ${!post.pinned && isRecentlyUpdated(post, 3) ? `<span class="latest-badge">● 最新</span>` : ""}
+            ${isRecentlyUpdated(post, 3) ? `<span class="latest-badge">● 最新</span>` : ""}
             ${isAdmin && post.draft ? `<span class="draft-badge">草稿</span>` : ""}
             ${isAdmin ? `<button class="post-edit-btn" onclick="event.stopPropagation();openEditor('${post.slug}')">编辑</button><button class="post-edit-btn post-delete-btn" onclick="event.stopPropagation();deletePost('${post.slug}')">删除</button><button class="post-edit-btn" onclick="event.stopPropagation();toggleFeatured('${post.slug}')">${post.pinned ? '✕ 取消精选' : '★ 设为精选'}</button>` : ""}
           </div>
