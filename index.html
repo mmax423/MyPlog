@@ -1766,6 +1766,8 @@
     /* 兜底：按 name/placeholder 隐藏 input 自身 */
     #tcomment input[name="mail"],
     #tcomment input[name="link"],
+    #tcomment .tk-meta-input > *:nth-child(2),
+    #tcomment .tk-meta-input > *:nth-child(3) { display: none !important; }
     #tcomment input[placeholder*="邮箱"],
     #tcomment input[placeholder*="网址"],
     #tcomment input[placeholder*="mail"],
@@ -5200,36 +5202,46 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               lang: "zh-CN",
             });
             // 移除邮箱/网址字段，只留昵称(ID)+内容。
-            // Twikoo 1.6.x 的 .tk-meta-input 里固定有 3 个 .el-input：昵称/邮箱/网址。
-            // 最稳策略：直接隐藏第 2、3 个 .el-input，不再依赖 placeholder/name 匹配。
             var stripComment = function() {
               var container = document.querySelector("#tcomment");
               if (!container) return;
-              // 鲁棒策略：按 label 文字隐藏「邮箱 / 网址」整项，不依赖 DOM 嵌套与顺序
               var HIT = /邮箱|邮件|e[\-]?mail|网址|网站|站点|url|link|http/i;
-              container.querySelectorAll(".el-form-item").forEach(function(item) {
-                var lab = item.querySelector(".el-form-item__label, label");
-                var txt = (lab ? lab.textContent : (item.getAttribute("data-label") || item.getAttribute("label") || "")).trim();
-                if (HIT.test(txt)) item.style.display = "none";
+
+              // 策略1：.tk-meta-input 下固定顺序隐藏第2、3项（昵称/邮箱/网址）
+              var meta = container.querySelector(".tk-meta-input");
+              if (meta && meta.children.length >= 3) {
+                meta.children[1].style.setProperty("display", "none", "important");
+                meta.children[2].style.setProperty("display", "none", "important");
+              }
+
+              // 策略2：按 label 文字隐藏整项（兼容不同 class/嵌套）
+              container.querySelectorAll("*").forEach(function(node) {
+                if (!node.children || node.children.length > 0) return;
+                var txt = (node.textContent || "").trim();
+                if (txt.length <= 8 && HIT.test(txt)) {
+                  var group = node.closest(".el-form-item, .el-form-item__content, .el-col, .tk-meta-input > div, .tk-meta-input > *");
+                  if (group) group.style.setProperty("display", "none", "important");
+                }
               });
-              // 兜底：无 form-item 结构时，按 input 的 name/placeholder 隐藏
+
+              // 策略3：按 input 的 name/placeholder 隐藏
               container.querySelectorAll("input").forEach(function(inp) {
                 var ph = (inp.getAttribute("placeholder") || "");
                 var nm = (inp.getAttribute("name") || "");
                 if (HIT.test(ph) || nm === "mail" || nm === "link") {
-                  var wrap = inp.closest(".el-form-item, .el-input") || inp.parentElement;
-                  (wrap || inp).style.display = "none";
+                  var wrap = inp.closest(".el-form-item, .el-input, .el-col") || inp.parentElement;
+                  if (wrap) wrap.style.setProperty("display", "none", "important");
+                  inp.style.setProperty("display", "none", "important");
                 }
               });
             };
-            // 立即尝试一次 + 短轮询覆盖首帧
+            // 立即 + 多轮重试，覆盖 Twikoo 异步渲染
             stripComment();
-            [200, 500, 1000, 1800].forEach(function(d){ setTimeout(stripComment, d); });
-            // 持续监听：用户点开评论框、切换文章重渲染时都会再次清理
+            [200, 500, 1000, 1800, 3000, 5000, 8000].forEach(function(d){ setTimeout(stripComment, d); });
+            // 持续监听动态变化
             try {
               var mo = new MutationObserver(function(){ stripComment(); });
               mo.observe(el, { childList: true, subtree: true });
-              // 3 分钟后停止观察，避免长期占用
               setTimeout(function(){ mo.disconnect(); }, 180000);
             } catch(e) {}
           } catch (e) { console.error("Twikoo init failed", e); }
