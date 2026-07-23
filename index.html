@@ -1757,27 +1757,13 @@
     }
 
     /* 文章评论（Twikoo）精简：只留昵称(ID)一栏，隐藏邮箱与网址 */
-    /* Twikoo 1.6.x 的结构：.tk-meta-input 里有 3 个 .el-input，顺序固定为 昵称/邮箱/网址 */
-    /* 最稳方案：直接隐藏第 2、3 个，不再依赖 placeholder/name 匹配（实测旧方案未命中） */
-    #tcomment .tk-meta-input > *:nth-child(2),
-    #tcomment .tk-meta-input > *:nth-child(3),
-    #tcomment .tk-meta-input .el-form-item:nth-child(2),
-    #tcomment .tk-meta-input .el-form-item:nth-child(3) { display: none !important; }
-    /* 兜底：按 name/placeholder 隐藏 input 自身 */
+    /* F12 验证：Twikoo 1.6.41 用 .el-input 包裹 input.el-input__inner，字段 name 为 nick/mail/link */
+    /* 整栏隐藏：包含 name="mail" 或 name="link" 的 .el-input */
+    #tcomment .tk-meta-input .el-input:has(input[name="mail"]),
+    #tcomment .tk-meta-input .el-input:has(input[name="link"]) { display: none !important; }
+    /* 若浏览器不支持 :has()，至少把 input 自身藏掉 */
     #tcomment input[name="mail"],
-    #tcomment input[name="link"],
-    #tcomment .tk-meta-input > *:nth-child(2),
-    #tcomment .tk-meta-input > *:nth-child(3),
-    #tcomment .tk-meta-input > .tk-row > *:nth-child(2),
-    #tcomment .tk-meta-input > .tk-row > *:nth-child(3),
-    #tcomment .el-input-group:nth-child(2),
-    #tcomment .el-input-group:nth-child(3),
-    /* 终极兜底：.tk-meta-input 下除第一个 .el-input-group 外全藏（根据用户截图三栏水平排列） */
-    #tcomment .tk-meta-input .el-input-group:not(:first-of-type) { display: none !important; }
-    #tcomment input[placeholder*="邮箱"],
-    #tcomment input[placeholder*="网址"],
-    #tcomment input[placeholder*="mail"],
-    #tcomment input[placeholder*="url"] { display: none !important; }
+    #tcomment input[name="link"] { display: none !important; }
     #tcomment .el-textarea__inner { min-height: 120px; }
   </style>
 </head>
@@ -5211,38 +5197,13 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             var stripComment = function() {
               var container = document.querySelector("#tcomment");
               if (!container) return;
-              var HIT = /邮箱|邮件|e[\-]?mail|网址|网站|站点|url|link|http/i;
               var HIDE = function(el) { if (el) el.style.setProperty("display", "none", "important"); };
               var meta = container.querySelector(".tk-meta-input") || container;
 
-              // 终极兜底：根据截图，.tk-meta-input 下水平排列 3 个 .el-input-group，
-              // 第一个是昵称，其余（邮箱/网址）全部隐藏。不依赖 nth-child 顺序。
-              meta.querySelectorAll(".el-input-group:not(:first-of-type)").forEach(HIDE);
-
-              // 暴力向上遍历：从含"邮箱/网址"文字的节点出发，向上找第一个含 input 的整栏容器，整栏藏掉
-              meta.querySelectorAll("*").forEach(function(node) {
-                var t = (node.textContent || "").trim();
-                if (t.length > 0 && t.length <= 10 && HIT.test(t)) {
-                  var p = node;
-                  while (p && p !== container && p !== document.body) {
-                    if (p.querySelector("input,textarea")) { HIDE(p); break; }
-                    p = p.parentElement;
-                  }
-                }
-              });
-
-              // name/placeholder 兜底
-              container.querySelectorAll("input").forEach(function(inp) {
-                var ph = (inp.getAttribute("placeholder") || "");
-                var nm = (inp.getAttribute("name") || "");
-                if (HIT.test(ph) || nm === "mail" || nm === "link") {
-                  var p = inp.parentElement;
-                  while (p && p !== container && p !== document.body) {
-                    if (p.querySelector("input,textarea") && p !== inp) { HIDE(p); break; }
-                    p = p.parentElement;
-                  }
-                  HIDE(inp);
-                }
+              // 根据 F12 截图，Twikoo 1.6.41 用 .el-input 包裹 input.el-input__inner，
+              // 字段 name 为 nick/mail/link。直接按 name 隐藏邮箱/网址整栏，不猜结构。
+              meta.querySelectorAll('input[name="mail"], input[name="link"]').forEach(function(inp) {
+                HIDE(inp.closest(".el-input") || inp.parentElement);
               });
             };
             // 立即 + 多轮重试，覆盖 Twikoo 异步渲染
