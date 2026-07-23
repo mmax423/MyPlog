@@ -5211,35 +5211,28 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
               if (!container) return;
               var HIT = /邮箱|邮件|e[\-]?mail|网址|网站|站点|url|link|http/i;
               var HIDE = function(el) { if (el) el.style.setProperty("display", "none", "important"); };
-
-              // 策略1：.tk-meta-input 下固定顺序隐藏第2、3项（昵称/邮箱/网址）
-              var meta = container.querySelector(".tk-meta-input");
-              if (meta) {
-                // Twikoo 可能把 3 个输入组直接放 meta 下，也可能包在 .tk-row 里
-                var groups = meta.querySelectorAll(":scope > .el-input-group, :scope > .tk-row > .el-input-group, :scope > *");
-                if (groups.length >= 3) {
-                  HIDE(groups[1]); HIDE(groups[2]);
-                } else if (meta.children.length >= 3) {
-                  HIDE(meta.children[1]); HIDE(meta.children[2]);
-                }
-              }
-
-              // 策略2：按 label 文字隐藏整项（兼容 el-input-group / el-form-item / tk-row 等）
-              container.querySelectorAll("*").forEach(function(node) {
-                if (!node.children || node.children.length > 0) return;
-                var txt = (node.textContent || "").trim();
-                if (txt.length <= 8 && HIT.test(txt)) {
-                  var group = node.closest(".el-input-group, .el-input-group__prepend, .el-form-item, .el-form-item__content, .el-col, .tk-row, .tk-meta-input > div, .tk-meta-input > *");
-                  HIDE(group);
+              // 暴力向上遍历：从含"邮箱/网址"文字的节点出发，向上找第一个含 input 的整栏容器，整栏藏掉
+              var meta = container.querySelector(".tk-meta-input") || container;
+              meta.querySelectorAll("*").forEach(function(node) {
+                var t = (node.textContent || "").trim();
+                if (t.length > 0 && t.length <= 10 && HIT.test(t)) {
+                  var p = node;
+                  while (p && p !== container && p !== document.body) {
+                    if (p.querySelector("input,textarea")) { HIDE(p); break; }
+                    p = p.parentElement;
+                  }
                 }
               });
-
-              // 策略3：按 input 的 name/placeholder 隐藏
+              // name/placeholder 兜底
               container.querySelectorAll("input").forEach(function(inp) {
                 var ph = (inp.getAttribute("placeholder") || "");
                 var nm = (inp.getAttribute("name") || "");
                 if (HIT.test(ph) || nm === "mail" || nm === "link") {
-                  HIDE(inp.closest(".el-input-group, .el-form-item, .el-input, .el-col, .tk-row") || inp.parentElement);
+                  var p = inp.parentElement;
+                  while (p && p !== container && p !== document.body) {
+                    if (p.querySelector("input,textarea") && p !== inp) { HIDE(p); break; }
+                    p = p.parentElement;
+                  }
                   HIDE(inp);
                 }
               });
