@@ -5266,6 +5266,14 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         return TWIKOO_DEFAULT;
       }
     };
+    // 启动时自动清理：若本地值不是合法 URL 且不为空，直接删除，避免历史脏数据导致评论区崩溃
+    (function() {
+      const raw = localStorage.getItem(TWIKOO_KEY);
+      if (raw && raw.trim() && !/^https?:\/\//.test(raw.trim())) {
+        console.warn("[Twikoo] 清理非法 envId:", raw);
+        localStorage.removeItem(TWIKOO_KEY);
+      }
+    })();
     let _walineLoaded = false, _walineClient = null;
     (function loadWalineClient() {
       if (!WALINE_CONFIG.serverURL) return; // 未配置 → 用本地
@@ -6421,6 +6429,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const el = document.getElementById("twikoo-env-input");
       if (!el) return;
       const v = el.value.trim();
+      if (v && !/^https?:\/\//.test(v)) {
+        alert("Twikoo 环境地址必须以 http:// 或 https:// 开头，请填写完整 URL。");
+        return;
+      }
       if (v) localStorage.setItem(TWIKOO_KEY, v); else localStorage.removeItem(TWIKOO_KEY);
       alert("Twikoo 环境" + (v ? "已保存并启用 ✅\n打开任意文章即可看到评论区" : "已回退默认后端（评论区照常显示）"));
       // 若当前正在文章页，重新渲染以挂载/卸载评论区
