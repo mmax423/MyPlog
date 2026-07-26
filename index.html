@@ -6694,11 +6694,39 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       userPosts.forEach(collect);
       GH_POSTS.forEach(collect);   // 云端参与合并；拉取失败为空时自然不覆盖本地
       let all = [...map.values()].filter(p => !hidden.includes(p.slug));
-      // 防御性二次去重
+      // 防御性二次去重（按 slug）
       const seen = new Set();
       all = all.filter(p => { if (seen.has(p.slug)) return false; seen.add(p.slug); return true; });
+      // 防御性三次去重（按 title+date）：同一篇文章多次保存/同步会生成不同 user-xxx slug
+      const byTitleDate = new Map();
+      all.forEach(p => {
+        const key = (p.title || "") + "|" + (p.date || "");
+        const cur = byTitleDate.get(key);
+        if (!cur || (p.updatedAt || p.date || "") > (cur.updatedAt || cur.date || "")) {
+          byTitleDate.set(key, p);
+        }
+      });
+      all = [...byTitleDate.values()];
       if (!isAdmin) all = all.filter(p => !p.draft); // 草稿仅管理员可见
       return all;
+    }
+
+    // 清理 localStorage 中同一标题+日期的重复文章（多次保存/同步导致不同 slug）
+    function cleanupDuplicateUserPosts() {
+      const userPosts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const map = new Map();
+      let changed = false;
+      const score = (p) => ((p._ghIssue ? 1000000000000 : 0) + new Date(p.updatedAt || p.date || 0).getTime() + (p.content || "").length);
+      userPosts.forEach(p => {
+        const key = (p.title || "") + "|" + (p.date || "");
+        const cur = map.get(key);
+        if (!cur || score(p) > score(cur)) { map.set(key, p); }
+        else { changed = true; }
+      });
+      if (changed) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([...map.values()]));
+        console.log("[cleanup] 已合并重复文章");
+      }
     }
 
     // ===== 云端同步状态（常驻徽章，让「到底同没同步」肉眼可见）=====
@@ -7027,6 +7055,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       migrateTags();
       localStorage.setItem('tags-migrated-20260713', '1');
     }
+    // 每次启动清理一次重复文章（多次保存/同步会产生不同 slug 的副本）
+    cleanupDuplicateUserPosts();
 
     function getBio() {
       return localStorage.getItem(BIO_KEY) || `这里收录了我大一一学年的全部习作，共七十篇。
@@ -7426,6 +7456,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const series = seriesStr ? seriesStr.split(/[,，、]/).map(s => s.trim()).filter(Boolean) : [];
       const draft = document.getElementById("edit-draft").checked;
       const pinned = document.getElementById("edit-pinned").checked;
+      // 新建文章时，若已有同标题同日期的文章，则更新旧文而非创建新副本（防重复）
+      if (!oldSlug) {
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]").find(p => p.title === title && p.date === date);
+        if (existing) oldSlug = existing.slug;
+      }
       const slug = oldSlug || ("user-" + Date.now().toString(36));
       const imgCount = (content.match(IMG_RE) || []).length;
       let excerpt = content.replace(IMG_RE, " ").replace(/[#>*_`~]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
