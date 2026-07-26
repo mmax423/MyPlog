@@ -1775,16 +1775,19 @@
 
     /* ===== 评论区 · 铸言风格皮肤 ===== */
     /* 文章评论（Twikoo 1.6.41）：只留昵称一栏，隐藏邮箱与网址（双保险：后端 DISPLAYED_FIELDS 已不输出，CSS 兜底） */
-    #tcomment .tk-meta-input .el-input-group:has(input[name="mail"]),
-    #tcomment .tk-meta-input .el-input-group:has(input[name="link"]),
+    /* Twikoo 真实 DOM：.tk-meta-input > .el-input > .el-input-group__prepend + input */
+    /* 兜底①：隐藏非第一个 el-input（只保留昵称栏） */
+    #tcomment .tk-meta-input > .el-input:not(:first-child) { display: none !important; }
+    /* 兜底②：按 name 精确隐藏（以防 DOM 结构变化） */
     #tcomment .tk-meta-input .el-input:has(input[name="mail"]),
     #tcomment .tk-meta-input .el-input:has(input[name="link"]),
-    #tcomment .el-input-group:has(input[name="mail"]),
-    #tcomment .el-input-group:has(input[name="link"]),
-    #tcomment .el-input:has(input[name="mail"]),
-    #tcomment .el-input:has(input[name="link"]),
     #tcomment input[name="mail"],
     #tcomment input[name="link"] { display: none !important; }
+    /* 兜底③：隐藏所有 prepend 标签（昵称/邮箱/网址 字样） */
+    #tcomment .tk-meta-input .el-input-group__prepend { display: none !important; }
+    /* 兜底④：隐藏字数统计 0/500（无论后端 LIMIT_LENGTH 是否生效） */
+    #tcomment .tk-input .el-input__count,
+    #tcomment .el-textarea .el-input__count { display: none !important; }
 
     #tcomment { font-family: var(--font-sans); color: var(--fg); }
     #tcomment .tk-comments-container { font-family: var(--font-sans); }
@@ -5258,41 +5261,71 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         if (window.twikoo) {
           el.innerHTML = "";
           try {
+            // 初始化 Twikoo（后端决定默认字段，前端二次过滤保证只留昵称）
             twikoo.init({
               envId: TWIKOO_CONFIG.envId,
               el: "#tcomment",
               path: "post/" + slug,   // 按文章 slug 区分评论串，避免 hash 路由下混在一起
               lang: "zh-CN",
-            });
-            // 移除邮箱/网址字段，只留昵称(ID)+内容。
-            // 不依赖后端 DISPLAYED_FIELDS 配置：无论后端是否被重置，前端强制只保留昵称栏。
-            var stripComment = function() {
+              // 注意：Twikoo 没有 wordLimit 前端参数，字数限制由后端 LIMIT_LENGTH 控制。
+              // 下面 stripComment 会手动移除 maxlength 并隐藏字数统计，达到同样的效果。
+              onCommentLoaded: function () { stripComment(); }
+            }).then(function () { stripComment(); });
+
+            // 强制把评论区裁剪为「昵称 + 内容」两栏模式。
+            // 不依赖后端 DISPLAYED_FIELDS：无论后端配置是否被重置，前端都隐藏邮箱/网址。
+            var stripComment = function () {
               var container = document.querySelector("#tcomment");
               if (!container) return;
+
+              // 1) 物理删除 meta 区非昵称的整栏（比 display:none 更稳：
+              //    防 Twikoo 运行时用 JS 重注入内联样式把邮箱/网址栏又显示出来）
               var meta = container.querySelector(".tk-meta-input");
-              if (!meta) return;
-              // 遍历所有 meta 输入栏，只保留 name=nick 的那栏，其余（mail/link 等）整栏隐藏并去掉必填
-              meta.querySelectorAll(".el-input").forEach(function(box){
-                var inp = box.querySelector("input");
-                var name = (inp && inp.getAttribute("name") || "").toLowerCase();
-                if (name && name !== "nick") {
-                  box.style.setProperty("display", "none", "important");
-                  if (inp) inp.removeAttribute("required");
-                }
-              });
-              // 隐藏可能残留的 prepend 标签（"邮箱"/"网址"字样）
-              meta.querySelectorAll(".el-input-group__prepend").forEach(function(p){
-                p.style.setProperty("display", "none", "important");
+              if (meta) {
+                meta.querySelectorAll("input").forEach(function (inp) {
+                  var n = (inp.getAttribute("name") || "").toLowerCase();
+                  if (n && n !== "nick") {
+                    // 向上找最近的 .el-input / .el-input-group 容器，整栏删掉
+                    var box = inp.closest(".el-input, .el-input-group");
+                    if (!box) {
+                      box = inp.parentElement;
+                      while (box && !(box.className && String(box.className).indexOf("el-input") > -1)) {
+                        box = box.parentElement;
+                      }
+                    }
+                    if (box && box.parentElement) box.parentElement.removeChild(box);
+                    inp.removeAttribute("required");
+                  }
+                });
+                // 顺手删掉残留的 prepend 标签（昵称/邮箱/网址 字样）
+                meta.querySelectorAll(".el-input-group__prepend").forEach(function (p) {
+                  if (p.parentElement) p.parentElement.removeChild(p);
+                });
+              }
+
+              // 2) 移除评论字数限制（后端 LIMIT_LENGTH 默认 500，前端兜底取消）
+              var textarea = container.querySelector("textarea.el-textarea__inner, .tk-input textarea, textarea");
+              if (textarea) {
+                textarea.removeAttribute("maxlength");
+                textarea.removeAttribute("maxLength");
+              }
+              // 3) 物理删除字数统计元素（0/500）
+              container.querySelectorAll(".el-input__count, [class='input__count']").forEach(function (c) {
+                if (c.parentElement) c.parentElement.removeChild(c);
               });
             };
-            // 立即 + 多轮重试，覆盖 Twikoo 异步渲染
+
+            // 立即 + 多轮重试，覆盖 Twikoo 异步渲染/网络慢的情况
             stripComment();
-            [200, 500, 1000, 1800, 3000, 5000, 8000, 12000, 20000].forEach(function(d){ setTimeout(stripComment, d); });
+            [200, 500, 1000, 1800, 3000, 5000, 8000, 12000, 20000, 30000].forEach(function (d) {
+              setTimeout(stripComment, d);
+            });
+
             // 持续监听动态变化（长期有效，避免后端重置/页面停留超时后邮箱栏重现）
             try {
-              var mo = new MutationObserver(function(){ stripComment(); });
+              var mo = new MutationObserver(function () { stripComment(); });
               mo.observe(el, { childList: true, subtree: true });
-            } catch(e) {}
+            } catch (e) {}
           } catch (e) { console.error("Twikoo init failed", e); }
         } else if (tries++ < 25) {
           setTimeout(tryInit, 200);  // SDK 尚未加载完，轮询等待
@@ -5553,7 +5586,15 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const idx = userPosts.findIndex(p => p.slug === post.slug);
       if (idx >= 0) userPosts[idx] = post;
       else userPosts.unshift(post);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userPosts));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userPosts));
+      } catch (e) {
+        // 多半是 localStorage 配额耗尽（文章含过多/过大的 base64 图片）。
+        // 给出明确提示，避免文章被静默丢弃。
+        console.error("保存失败：localStorage 写入超限", e);
+        alert("⚠️ 文章保存失败：本地存储空间不足（通常是文章里图片太多/太大）。\n建议：删掉部分图片，或把图片换成外链。已自动压缩插入的图片，请重试保存。");
+        throw e;
+      }
     }
 
     function deleteUserPost(slug) {
@@ -6638,22 +6679,56 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
 
-    // ===== 图片上传 =====
+    // ===== 图片上传（自动压缩，避免 base64 撑爆 localStorage 导致文章保存失败/断掉）=====
     function handleImageUpload(event) {
       const files = event.target.files;
       const ed = document.getElementById('edit-content');
       if (!ed) return;
       Array.from(files).forEach(file => {
         if (!file.type.startsWith('image/')) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const base64 = e.target.result;
+        compressImage(file, 1600, 0.85).then(function(base64) {
           insertImageAtCursor(base64, file.name);
           addImgPreview(base64, file.name);
-        };
-        reader.readAsDataURL(file);
+        }).catch(function() {
+          // 压缩失败（极罕见）降级为原始 base64，保证不丢图
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            insertImageAtCursor(e.target.result, file.name);
+            addImgPreview(e.target.result, file.name);
+          };
+          reader.readAsDataURL(file);
+        });
       });
       event.target.value = '';
+    }
+    // 用 canvas 把图片缩到 maxDim 以内并以 quality 质量输出（大幅减小 base64 体积）
+    function compressImage(file, maxDim, quality) {
+      return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+              const scale = Math.min(maxDim / w, maxDim / h);
+              w = Math.round(w * scale); h = Math.round(h * scale);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            // 透明 PNG（截图/图标常含透明）保留 PNG；照片走 JPEG 大幅压缩
+            const isPng = file.type === 'image/png' || (file.name || '').toLowerCase().endsWith('.png');
+            const outType = isPng ? 'image/png' : 'image/jpeg';
+            try { resolve(canvas.toDataURL(outType, quality)); }
+            catch (err) { reject(err); }
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
     }
     let savedRange = null;
     let currentBg = null; // 当前文章底图：{ src, name, opacity } 或 null
