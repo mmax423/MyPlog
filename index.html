@@ -7509,18 +7509,37 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     function deletePost(slug) {
-      if (!confirm("确定删除这篇文章吗？\n删除后将从本站移除（已同步到云端的文章会一并关闭对应 Issue）。")) return;
-      // 取出文章（本地或 GitHub 副本都要看），以便拿到 issue 号
-      const localPost = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]").find(p => p.slug === slug);
-      const ghPost = GH_POSTS.find(p => p.slug === slug);
-      const issueNum = (localPost && localPost._ghIssue) || (ghPost && ghPost._ghIssue);
-      // 1) 立即从所有数据源移除
-      if (slug.startsWith("user-")) deleteUserPost(slug);
-      hideSlug(slug);   // ← 关键：所有删除都记入隐藏列表，即使云端重新拉取也不会「复活」
-      GH_POSTS = GH_POSTS.filter(p => p.slug !== slug);
-      // 2) 云端关闭对应 Issue（若已同步）；关闭成功后刷新缓存，但隐藏列表仍会过滤掉它
-      if (issueNum) {
-        closeGithubIssue(issueNum).then(() => fetchPostsFromGitHub().then(l => { GH_POSTS = l; }));
+      // 「同一篇文章」= 同标题 + 同日期；一篇文章可能散成多个不同 slug 的副本
+      //（本机多次保存留下 user-xxx、云端同步留下 gh-NNN），必须按身份一次性全清。
+      const localAll = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const allCopies = [...localAll, ...GH_POSTS];
+      const target = allCopies.find(p => p.slug === slug);
+      const idKey = target ? ((target.title || "") + "|" + (target.date || "")) : null;
+      const msg = idKey
+        ? "确定删除这篇文章吗？\n（将一并删除本机与云端的所有副本，删除后不可恢复）"
+        : "确定删除这篇文章吗？\n删除后将从本站移除（已同步到云端的文章会一并关闭对应 Issue）。";
+      if (!confirm(msg)) return;
+      if (idKey) {
+        // 1) 删除本机所有「同标题同日期」副本
+        const remaining = localAll.filter(p => ((p.title || "") + "|" + (p.date || "")) !== idKey);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+        // 2) 隐藏所有「同标题同日期」的 slug（含云端 gh- 副本），即使云端重新拉取也不会复活
+        allCopies.filter(p => ((p.title || "") + "|" + (p.date || "")) === idKey)
+          .forEach(p => hideSlug(p.slug));
+        // 3) 关闭所有对应的 GitHub Issue（已同步的）
+        allCopies.filter(p => ((p.title || "") + "|" + (p.date || "")) === idKey && p._ghIssue)
+          .forEach(p => closeGithubIssue(p._ghIssue));
+        // 4) 从云端缓存移除
+        GH_POSTS = GH_POSTS.filter(p => ((p.title || "") + "|" + (p.date || "")) !== idKey);
+      } else {
+        // 退路：没有标题/日期可判定时，仅按 slug 删除（兼容老数据）
+        if (slug.startsWith("user-")) deleteUserPost(slug);
+        hideSlug(slug);
+        GH_POSTS = GH_POSTS.filter(p => p.slug !== slug);
+        const lp = localAll.find(p => p.slug === slug);
+        const gp = GH_POSTS.find(p => p.slug === slug);
+        const issueNum = (lp && lp._ghIssue) || (gp && gp._ghIssue);
+        if (issueNum) closeGithubIssue(issueNum);
       }
       closeModal();
       navigate("home");
