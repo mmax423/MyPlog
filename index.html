@@ -221,6 +221,9 @@
       letter-spacing: 0.5px;
       position: relative;
       padding-bottom: 2px;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      white-space: nowrap;
     }
     .nav a::after {
       content: '';
@@ -265,6 +268,7 @@
       justify-content: center;
       padding: 4px;
       line-height: 1;
+      flex-shrink: 0;
     }
     .theme-toggle:hover {
       color: var(--fg);
@@ -281,6 +285,11 @@
       color: var(--fg-light);
       transition: var(--transition);
       letter-spacing: 0.5px;
+      white-space: nowrap;
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      flex-shrink: 0;
+      min-width: fit-content;
     }
     .admin-btn:hover {
       border-color: var(--accent);
@@ -345,6 +354,38 @@
     body.dark .nq-tag { color: #c9b07a; }
     body.dark .nav-quote-bar { background: #232220; border-color: #34322e; }
     body.dark .nav-quote-bar:hover { background: #2a2826; }
+    /* 文章内页：隐藏顶部导航栏金句轮播 */
+    .post-page .nav-quote-bar { display: none; }
+
+    /* ===== 编辑器下拉多选（标签、系列） ===== */
+    .picker { position: relative; }
+    .picker-trigger {
+      width: 100%; padding: 10px 14px; background: var(--bg-card); border: 0.5px solid var(--border);
+      border-radius: var(--radius); display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; min-height: 40px; transition: border-color .2s, box-shadow .2s;
+    }
+    .picker-trigger:hover { border-color: var(--border-hover); }
+    .picker.open .picker-trigger { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(133,79,11,.08); }
+    .picker-value { color: var(--fg); font-size: 14px; line-height: 1.5; }
+    .picker-value.placeholder { color: var(--fg-light); }
+    .picker-arrow { font-size: 10px; color: var(--fg-light); transition: transform .2s; }
+    .picker.open .picker-arrow { transform: rotate(180deg); }
+    .picker-panel {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 100;
+      background: var(--bg-card); border: 0.5px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow-md); max-height: 280px; overflow-y: auto; padding: 8px;
+    }
+    .picker.open .picker-panel { display: block; }
+    .picker-options { display: flex; flex-direction: column; gap: 4px; }
+    .picker-option { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background .15s; }
+    .picker-option:hover { background: rgba(0,0,0,.04); }
+    .picker-option input[type=checkbox] { cursor: pointer; width: 15px; height: 15px; accent-color: var(--accent); }
+    .picker-add { display: flex; gap: 6px; padding: 8px 4px 4px; border-top: 0.5px dashed var(--border); margin-top: 6px; }
+    .picker-add input { flex: 1; padding: 7px 10px; border: 0.5px solid var(--border); border-radius: 6px; background: var(--bg); font-size: 13px; color: var(--fg); }
+    .picker-add input:focus { outline: none; border-color: var(--accent); }
+    .picker-add button { padding: 7px 12px; border-radius: 6px; border: 0.5px solid var(--border); background: var(--bg); color: var(--fg); font-size: 13px; cursor: pointer; transition: var(--transition); }
+    .picker-add button:hover { border-color: var(--accent); color: var(--accent); }
+    body.dark .picker-option:hover { background: rgba(255,255,255,.06); }
 
     /* ===== 写作年表 ===== */
     .tl-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -702,6 +743,8 @@
       margin-left: -12px;
       padding-right: 12px;
       border-radius: var(--radius);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.06);
     }
     .post-card:last-child { border-bottom: none; }
 
@@ -759,6 +802,8 @@
     .post-tag:hover {
       border-color: var(--accent);
       color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      transform: translateY(-1px) rotate(-1.5deg);
     }
 
     /* ===== 精选代表作 / 视图切换 ===== */
@@ -1292,6 +1337,10 @@
     }
 
     /* ===== 编辑器模态框 ===== */
+    /* modal 打开时锁定底层滚动，防止滚轮穿透 */
+    body:has(.modal-overlay.open) { overflow: hidden; }
+    body:has(.modal-overlay.open) #weather-root { pointer-events: none; }
+    .modal-overlay.open { overscroll-behavior: contain; }
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -1740,6 +1789,14 @@
     .editor-toggles { display: flex; flex-wrap: wrap; gap: 16px; }
     .toggle-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg); cursor: pointer; }
     .toggle-inline input { width: auto; }
+    .excerpt-pick { margin-top: 8px; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; transition: .2s; }
+    .excerpt-pick:hover { filter: brightness(1.08); }
+    .excerpt-hint { font-size: 11px; color: var(--fg-muted); margin: 6px 0 0; }
+    #edit-excerpt { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font-serif); font-size: 13px; line-height: 1.6; resize: vertical; box-sizing: border-box; }
+    .series-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .series-opt { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-card); font-size: 13px; cursor: pointer; transition: .18s; }
+    .series-opt:hover { border-color: var(--accent); }
+    .series-opt input { accent-color: var(--accent); margin: 0; }
     #giscus-host { margin-top: 24px; }
 
 
@@ -1757,21 +1814,79 @@
       .stat-card { padding: 12px 8px; }
       .stat-card .num { font-size: 22px; }
       .main { padding: 20px 12px; }
-      .header-inner { padding: 10px 14px; }
-      .nav { gap: 10px; font-size: 13px; }
+      .header-inner { padding: 10px 14px; gap: 10px; }
+      .header-right { gap: 10px; min-width: 0; flex: 1; justify-content: flex-end; }
+      .nav {
+        gap: 10px;
+        font-size: 13px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent 100%);
+        padding-right: 16px;
+      }
+      .nav::-webkit-scrollbar { display: none; }
+      .nav a { flex-shrink: 0; white-space: nowrap; writing-mode: horizontal-tb; text-orientation: mixed; }
       .logo { font-size: 18px; letter-spacing: 2px; }
       .nav-quote-bar { padding: 7px 14px; font-size: 13px; }
       .nq-text { font-size: 15px; }
       .nq-mark { font-size: 17px; }
       .modal { padding: 16px; }
       .search-bar input { font-size: 14px; }
+      .series-grid { grid-template-columns: 1fr; gap: 14px; }
+      .series-detail-posts { grid-template-columns: 1fr; gap: 14px; }
+      .bichu-series-card { min-height: 220px; }
+      .bichu-card-glass { padding: 22px 16px 18px; }
+      .bichu-card-glass h3 { font-size: 19px; }
+      .bichu-card-glass .excerpt { -webkit-line-clamp: 3; }
+      .series-picker { gap: 6px; }
+      .series-opt { padding: 7px 12px; font-size: 13px; }
+      .excerpt-pick { width: 100%; box-sizing: border-box; }
     }
 
     /* 尊重「减少动态效果」系统偏好：关闭持续装饰动画，防低端机掉帧、护眼（不影响正文内容） */
     @media (prefers-reduced-motion: reduce) {
       .hero h1, .hero h1 .char, .bg-decoration::before, .bg-decoration::after { animation: none !important; }
       * { scroll-behavior: auto !important; }
+      .post-card:hover { transform: none !important; box-shadow: none !important; }
+      .post-tag:hover { transform: none !important; }
+      .bichu-node, .bichu-map-img, .bichu-route { animation: none !important; opacity: 1 !important; }
+      .bichu-route { stroke-dashoffset: 0 !important; }
     }
+
+    /* ===== 首屏 · 今日古诗 / 双栏（最新 + 精选） / 每日古诗 ===== */
+    .hero .hero-quote {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      color: var(--fg);
+      margin: 14px auto 0;
+      max-width: 620px;
+      line-height: 1.7;
+      letter-spacing: 1px;
+      opacity: 0;
+      animation: fade-in 1s ease 0.7s forwards;
+      padding: 0 16px;
+      font-weight: 500;
+    }
+    body.dark .hero .hero-quote { color: #e8e4da; }
+
+    .daily-poem-bar {
+      text-align: center;
+      margin: 60px auto 12px;
+      padding: 20px 20px;
+      max-width: 680px;
+      border-top: 0.5px solid var(--border);
+      border-bottom: 0.5px solid var(--border);
+      font-family: var(--font-serif);
+      color: var(--fg-light);
+      font-size: 14px;
+      letter-spacing: 1px;
+      line-height: 1.9;
+    }
+    .daily-poem-bar .dp-label { font-size: 11px; letter-spacing: 4px; color: var(--accent); display: block; margin-bottom: 8px; font-family: var(--font-sans); }
+    body.dark .daily-poem-bar { color: #9a958a; }
 
     /* ===== 评论区 · 铸言风格皮肤 ===== */
     /* 文章评论（Twikoo 1.6.41）：只留昵称一栏，隐藏邮箱与网址（双保险：后端 DISPLAYED_FIELDS 已不输出，CSS 兜底） */
@@ -1970,6 +2085,174 @@
     .gb-nick { font-family: var(--font-serif); font-size: 15px; font-weight: 600; color: var(--fg); }
     .gb-time { font-size: 12px; color: var(--fg-muted); }
     .gb-comment { font-size: 14px; color: var(--fg-muted); line-height: 1.8; margin: 0; white-space: pre-wrap; }
+
+    /* ===== 笔触校园 · 校园记忆地图（官方手绘地图底图） ===== */
+    .bichu-enter-btn {
+      display: inline-block; margin-bottom: 36px; padding: 10px 22px;
+      font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+      color: #fff; background: var(--accent); border: none; border-radius: var(--radius);
+      cursor: pointer; transition: transform .2s, opacity .2s; letter-spacing: .5px;
+    }
+    .bichu-enter-btn:hover { transform: translateY(-2px); opacity: .9; }
+    .bichu-wrap { max-width: 1600px; margin: 0 auto; }
+    /* 地图页挣脱博客 680px 阅读栏限制，按屏幕宽度自适应放大 */
+    body.bichu-page .main { max-width: min(1680px, 96vw); padding-left: 16px; padding-right: 16px; }
+    /* 专题页整体放宽，系列卡片与地图 hero 都更大气；文章详情页仍保持 680 阅读宽 */
+    body.series-page .main { max-width: min(1100px, 96vw); padding-left: 16px; padding-right: 16px; }
+    .series-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+    /* 专题列表：笔触校园特殊卡 —— 地图预览 + 渐变玻璃 + 专题名标注 */
+    .bichu-series-card { position: relative; overflow: hidden; border-radius: var(--radius); min-height: 320px; grid-column: 1 / -1; border: 1px solid var(--border); box-shadow: 0 18px 54px -26px rgba(0,0,0,.4); cursor: pointer; }
+    .bichu-card-map { position: absolute; inset: 0; background-size: cover; background-position: center; transform: scale(1.02); transition: transform .55s ease; }
+    .bichu-series-card:hover .bichu-card-map { transform: scale(1.07); }
+    .bichu-card-glass {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 34px 24px 24px;
+      background:
+        linear-gradient(to top,
+          rgba(45,34,24,.80) 0%,
+          rgba(58,44,32,.56) 24%,
+          rgba(70,54,40,.34) 47%,
+          rgba(82,64,48,.16) 70%,
+          rgba(94,74,56,.05) 88%,
+          rgba(106,84,64,0) 100%);
+      color: #f4efe4;
+    }
+    .bichu-card-badge { display: inline-block; font-size: 11px; letter-spacing: 1px; padding: 3px 10px; border-radius: 999px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); margin-bottom: 9px; }
+    .bichu-card-glass h3 { color: #fff; font-family: var(--font-serif); font-size: 23px; font-weight: 600; margin: 0 0 5px; }
+    .bichu-card-glass .excerpt { color: rgba(244,239,228,.82); font-size: 13px; line-height: 1.6; margin: 0 0 11px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .bichu-card-foot { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: rgba(244,239,228,.72); }
+    .bichu-card-go { font-weight: 600; color: #fff; }
+    /* 专题详情：笔触校园 —— 地图展示页在上，文章网格在下 */
+    body.series-detail-bichu .main { max-width: min(1680px, 96vw); padding-left: 16px; padding-right: 16px; }
+    .series-detail-posts { margin-top: 30px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    .bichu-head { text-align: center; margin-bottom: 22px; }
+    .bichu-head h1 { font-family: var(--font-serif); font-size: 28px; font-weight: 600; color: var(--fg); margin-bottom: 10px; }
+    .bichu-head p { color: var(--fg-muted); font-size: 14px; margin-bottom: 14px; }
+    .bichu-controls { display: flex; justify-content: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .bichu-tour-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px; font-size: 13px; font-weight: 500;
+      color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+      border: 1px solid var(--accent); border-radius: 999px; cursor: pointer; transition: .2s;
+    }
+    .bichu-tour-btn:hover { background: var(--accent); color: #fff; }
+    .bichu-tour-btn.active { background: var(--accent); color: #fff; }
+    /* 笔触校园 · 校园记忆地图 */
+    .bichu-stage { position: relative; }
+    .bichu-map-wrap {
+      position: relative; width: 100%; aspect-ratio: 1600 / 715;
+      background: #e8e1d4; border: 0.5px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 16px 50px -20px rgba(0,0,0,.22);
+      cursor: grab;
+    }
+    .bichu-map-wrap:active { cursor: grabbing; }
+    .bichu-map-inner {
+      position: relative; width: 100%; height: 100%;
+      transform-origin: 0 0;
+      transition: transform .85s cubic-bezier(.25,.8,.25,1);
+    }
+    .bichu-map-inner.is-tour { transition: transform .9s cubic-bezier(.25,.8,.25,1); }
+    .bichu-map-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; display: block; transition: filter .35s ease, opacity .35s ease; }
+    .bichu-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .bichu-map-wrap.dimmed .bichu-map-img { filter: saturate(0.18) brightness(0.82); opacity: .72; }
+    .bichu-map-wrap.dimmed .bichu-svg { opacity: .95; }
+
+    .bichu-float-card {
+      position: absolute; left: 0; top: 0; z-index: 20;
+      width: 100%; max-width: 320px; pointer-events: none;
+      opacity: 0; visibility: hidden;
+      transform: translateY(12px) scale(0.98);
+      transition: opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1), visibility .35s;
+    }
+    .bichu-float-card.show { opacity: 1; visibility: visible; transform: translateY(0) scale(1); pointer-events: auto; }
+    .bichu-float-card .bichu-card-body {
+      position: relative;
+      padding: 20px; background: rgba(248, 246, 241, 0.82); border: 0.5px solid rgba(133,79,11,0.28);
+      border-radius: var(--radius); box-shadow: 0 18px 50px -20px rgba(0,0,0,.38);
+      -webkit-backdrop-filter: blur(12px) saturate(1.15); backdrop-filter: blur(12px) saturate(1.15);
+    }
+    .bichu-card-close {
+      position: absolute; top: 8px; right: 10px; z-index: 5;
+      width: 28px; height: 28px; line-height: 28px; text-align: center;
+      font-size: 20px; color: var(--fg-muted); background: transparent; border: none;
+      cursor: pointer; border-radius: 50%; transition: color .2s, background .2s;
+    }
+    .bichu-card-close:hover { color: var(--fg); background: var(--border); }
+    .bichu-card-empty { color: var(--fg-muted); font-size: 14px; text-align: center; line-height: 1.9; padding: 12px 0; }
+    .bichu-card-no { font-family: var(--font-serif); font-size: 13px; color: var(--accent); letter-spacing: 2px; margin-bottom: 8px; }
+    .bichu-card-title { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--fg); margin-bottom: 14px; line-height: 1.4; }
+    .bichu-card-quote { font-family: var(--font-serif); font-size: 16px; line-height: 2; color: var(--fg); margin-bottom: 20px; opacity: .96; }
+    .bichu-card-btn {
+      padding: 9px 20px; font-family: var(--font-sans); font-size: 14px; color: var(--accent);
+      background: transparent; border: 1px solid var(--accent); border-radius: var(--radius); cursor: pointer; transition: background .2s, color .2s;
+    }
+    .bichu-card-btn:hover { background: var(--accent); color: #fff; }
+
+    .bichu-route {
+      fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+      opacity: .55; filter: drop-shadow(0 0 2px var(--accent));
+    }
+    .bichu-glow-a { stop-color: var(--accent); stop-opacity: .18; }
+    .bichu-glow-b { stop-color: var(--accent); stop-opacity: 0; }
+    .bichu-node { cursor: pointer; outline: none; }
+    .bichu-node * { pointer-events: none; }
+    .bichu-node .bichu-interactor { pointer-events: all; }
+    .bichu-pulse { fill: none; stroke: var(--accent); stroke-width: 1.6; opacity: .45; transform-origin: center; }
+    .bichu-dot { fill: var(--bg); stroke: var(--accent); stroke-width: 2; transition: r .25s, fill .25s; }
+    .bichu-core { fill: var(--accent); transition: r .25s; }
+    .bichu-num { font-family: var(--font-sans); font-size: 11px; font-weight: 700; fill: var(--accent); }
+    .bichu-label {
+      font-family: var(--font-sans); font-size: 12px; font-weight: 500;
+      fill: var(--fg); opacity: 0; transition: opacity .2s, transform .2s;
+      text-shadow: 0 1px 3px var(--bg), 0 0 6px var(--bg);
+      transform: translateY(4px);
+    }
+    .bichu-node:hover .bichu-label, .bichu-node.active .bichu-label { opacity: 1; transform: translateY(0); }
+    .bichu-node:hover .bichu-dot, .bichu-node:focus-visible .bichu-dot { r: 15; fill: color-mix(in srgb, var(--accent) 14%, var(--bg)); }
+    .bichu-node.active .bichu-dot { r: 16; fill: color-mix(in srgb, var(--accent) 22%, var(--bg)); }
+    .bichu-node.active .bichu-core { r: 6.5; }
+    .bichu-node.active .bichu-num { fill: var(--accent); }
+    .bichu-node.active .bichu-pulse { animation: bichuPulse 1.8s ease-out infinite; }
+    @keyframes bichuPulse { 0% { r: 13; opacity: .5; } 100% { r: 34; opacity: 0; } }
+    @keyframes bichuNodeIn { 0% { opacity: 0; transform: scale(0); } 100% { opacity: 1; transform: scale(1); } }
+    .bichu-node { opacity: 0; animation: bichuNodeIn .45s cubic-bezier(.2,.8,.2,1) forwards; }
+    .bichu-map-img { opacity: 0; animation: bichuFadeIn 1s ease .2s forwards; }
+    @keyframes bichuFadeIn { to { opacity: 1; } }
+    @keyframes bichuRouteDraw { to { stroke-dashoffset: 0; } }
+
+    @media (max-width: 760px) {
+      .bichu-map-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; aspect-ratio: auto; height: 420px; cursor: default; }
+      .bichu-map-wrap:active { cursor: default; }
+      .bichu-map-inner { width: auto; height: 100%; aspect-ratio: 1600 / 715; }
+      .bichu-float-card { position: fixed !important; left: 12px !important; right: 12px !important; bottom: 12px !important; top: auto !important; max-width: none !important; width: auto !important; transform: none !important; max-height: 44vh; overflow-y: auto; }
+      .bichu-head h1 { font-size: 24px; }
+    }
+
+    /* ===== 精选 · 展览 ===== */
+    .feat-wrap { max-width: 1100px; margin: 0 auto; }
+    .feat-head { text-align: center; margin-bottom: 44px; }
+    .feat-head h1 { font-family: var(--font-serif); font-size: 30px; font-weight: 600; color: var(--fg); margin-bottom: 14px; letter-spacing: 2px; }
+    .feat-intro { color: var(--fg-muted); font-size: 14px; line-height: 1.9; max-width: 560px; margin: 0 auto; }
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+    .feat-card {
+      position: relative; padding: 30px 26px 26px; background: var(--bg);
+      border: 0.5px solid var(--border); border-radius: var(--radius);
+      transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, border-color .25s; overflow: hidden;
+    }
+    .feat-card::before {
+      content: ""; position: absolute; left: 0; top: 0; width: 3px; height: 100%;
+      background: var(--accent); opacity: 0; transition: opacity .25s;
+    }
+    .feat-card:hover { transform: translateY(-6px); box-shadow: 0 18px 44px -20px rgba(0,0,0,.3); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-plate {
+      position: absolute; top: 18px; right: 20px; font-family: var(--font-serif);
+      font-size: 13px; color: var(--fg-muted); letter-spacing: 1px; opacity: .6;
+    }
+    .feat-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--fg-muted); margin-bottom: 12px; }
+    .feat-title { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--fg); line-height: 1.4; margin-bottom: 14px; }
+    .feat-quote { font-family: var(--font-serif); font-size: 14.5px; line-height: 1.95; color: var(--fg-muted); margin-bottom: 18px; }
+    .feat-more { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: .5px; }
+
   </style>
 </head>
 <body>
@@ -1998,6 +2281,7 @@
             <a id="nav-home" onclick="navigate('home')">首页</a>
             <a id="nav-tags" onclick="navigate('tags')">标签</a>
             <a id="nav-series" onclick="navigate('series')">专题</a>
+            <a id="nav-featured" onclick="navigate('featured')">精选</a>
             <a id="nav-guestbook" onclick="navigate('guestbook')">留言</a>
             <a id="nav-about" onclick="navigate('about')">关于</a>
             <a id="nav-timeline" onclick="navigate('timeline')">年表</a>
@@ -2011,7 +2295,7 @@
       <span class="nq-mark">“</span>
       <span class="nq-tag" id="nq-tag" style="display:none"></span>
       <span class="nq-text" id="nq-text"></span>
-      <span class="nq-src" id="nq-src" onclick="event.stopPropagation();navigate('post', currentNavQuoteSlug)"></span>
+      <span class="nq-src" id="nq-src" onclick="event.stopPropagation();navigate('post',currentNavQuoteSlug)"></span>
       <span class="nq-hint">点击换一句</span>
     </div>
 
@@ -3139,7 +3423,7 @@ var e,t;e=this,t=function(){return function(){var e={2889:function(e,t,n){"use s
 
 
     // ===== 用户金句（来自文章正文，带出处，可手动增删）=====
-    const USER_QUOTES = [
+        const USER_QUOTES = [
       { text: "花红斑斑纷扰脑里", title: "诗 · 假如生命是一朵花， · 山上花好丰繁，", date: "2026-04-06", slug: "article-570a4f1dd201" },
       { text: "一、中秋日，见月娘", title: "随笔简录", date: "2026-02-26", slug: "article-26f621f8ec8a" },
       { text: "夜晚漫长的无垠天空", title: "我听得到", date: "2026-05-09", slug: "article-611d38057359" },
@@ -3153,17 +3437,13 @@ var e,t;e=this,t=function(){return function(){var e={2889:function(e,t,n){"use s
       { text: "低了头的我们的影子在水底", title: "“笔触校园、文彰华农”系列之十六：宁荫湖 · 你问我这路有多远呢 · 你走过桥的这端 · 等你从对岸 · 哪边是夕阳 · 风从湖面来", date: "2026-05-03", slug: "article-19068df4f429" },
       { text: "小心火烧青天，雷崩地灭了！", title: "呼号", date: "2026-05-06", slug: "article-5e064f2f61e5" },
       { text: "韶华不为少年留。恨悠悠。几时休", title: "念旧", date: "2025-10-25", slug: "article-014f5b92805f" },
-      { text: "我也打开相机，记录下在华农的时光", title: "“笔触校园、文彰华农”系列之一：千穗草海", date: "2026-01-18", slug: "article-21e59dfe3844" },
       { text: "摇了摇脑袋，陈波又回头往湖那边去", title: "灰尘中的叹息", date: "2025-11-09", slug: "article-b6fc0cf3dec3" },
       { text: "《诗》三百篇，大抵圣贤发愤之所为作也", title: "寒假作文写作总结", date: "2026-03-13", slug: "article-3ee49c128002" },
       { text: "唉——秋天一到，整片天都暗下来了啊…", title: "灰尘中的叹息", date: "2025-11-09", slug: "article-b6fc0cf3dec3" },
       { text: "终于！他终于变成了！一只梦寐以求的猫！", title: "落雨", date: "2026-06-11", slug: "article-b0c3a5872954" },
       { text: "大街上弥留着一股混杂了各种沐浴露一样香气", title: "随笔简录", date: "2026-02-26", slug: "article-26f621f8ec8a" },
       { text: "她的脸颊，满面轻霜，是摩挲不得的脆弱冰沙", title: "夏夜", date: "2026-05-27", slug: "article-ade58cc6a298" },
-      { text: "难得聊这么久，算了，你专心回家吧，回头再聊", title: "假日", date: "2025-10-05", slug: "article-1968fee6141a" },
-      { text: "江向晚  （站起身）没什么，我只是有些担心你太累了", title: "晚霞", date: "2026-05-21", slug: "article-0fa5329b75b2" },
       { text: "风掠过树梢，花香裹了眷恋，悠悠荡荡，漫过了整座山岗", title: "喜上眉梢枝头笑", date: "2026-01-27", slug: "article-d34ea636b5b2" },
-      { text: "江向晚  （转身）下雨天实在很讨厌，但是至少现在很美", title: "晚霞", date: "2026-05-21", slug: "article-0fa5329b75b2" },
       { text: "天色阴郁，却落不下来几点雨珠，波纹荡到眼前，一点风而已", title: "幸事与不幸", date: "2026-03-31", slug: "article-e4c3aaa83d08" },
       { text: "我呆滞了半晌，看着老爷爷仿佛风一样，消失在前方的拐角处", title: "日常的一天", date: "2026-02-20", slug: "article-6aa3f1ffb9c2" },
       { text: "李顺满脸理所当然，辩解说：“外出读书，还不是嫁给书本了", title: "喜上眉梢枝头笑", date: "2026-01-27", slug: "article-d34ea636b5b2" },
@@ -3178,13 +3458,9 @@ var e,t;e=this,t=function(){return function(){var e={2889:function(e,t,n){"use s
       { text: "在混乱中仍能守住内心的秩序这是所有文化、所有思想传统里，都在指向的“心安", title: "读《悉达多》第一部有感", date: "2026-03-10", slug: "article-c7c42e5c57b8" },
       { text: "我无从得知了，只知道随着年龄的增长，那些可怜的人们逐渐淹没在社会的洪流里", title: "幼话", date: "2025-09-30", slug: "article-cf79db900060" },
       { text: "惟江上之清风，与山间之明月，耳得之而为声，目遇之而成色，取之无禁，用之不竭", title: "游园记", date: "2026-04-09", slug: "article-0370540c63b0" },
-      { text: "一个学期的学习时光悄然逝去，有关《中国古代文学史》课程所学内容仿佛仍然历历在目", title: "中国古代文学史学习总结", date: "2025-12-04", slug: "article-261c366d70df" },
       { text: "愿每一次提笔都有进步，每一份坚持都能沉淀，让这个假期成为写作成长路上的坚实阶梯", title: "寒假作文写作规划", date: "2026-01-15", slug: "article-5827ca965966" },
-      { text: "了解深井村在乡村振兴发展战略下的发展现状及青年团队参与深井村文化宣传建设活动的作用", title: "对深井村发展现状的调研活动", date: "2025-10-30", slug: "article-9e530b772d9d" },
       { text: "好臭，好恶心，好可怕。他要干嘛？妈妈呢？阿郭儿？我不应该就那样走了的，谁能帮帮我啊？", title: "幼话", date: "2025-09-30", slug: "article-cf79db900060" },
-      { text: "（一）明确提出的写作过程中存在的三大问题：叙述衔接不流畅、视角切换卡顿、主题表达模糊", title: "寒假作文写作规划", date: "2026-01-15", slug: "article-5827ca965966" },
       { text: "嫂饙”二字听得我一头雾水，后来搞清楚后，“饙”指的是古时候沥干粥水、徒留饭粒为饭的做法", title: "乡下小记", date: "2026-03-04", slug: "article-8f08ad3ebe2c" },
-      { text: "日常阅读提上日程，已整理书单，并借阅相应书籍进行阅读与鉴赏，培养日常写作读书笔记的习惯", title: "第一学期作文写作总结", date: "2025-12-19", slug: "article-de26e5351568" },
       { text: "风掠过湖面，带走几分燥热，也捎来草木清香，让这方湖水在喧嚣校园里，始终守着一份美与从容", title: "“笔触校园、文彰华农”系列之十三:昭阳湖", date: "2026-04-15", slug: "article-1b2b45c9dde4" },
       { text: "眼的交际里，一块刻了问题的石头浮上心头：人与人的关系之中究竟该将目光锁定在彼此谁的身上？", title: "雨天", date: "2026-04-18", slug: "article-991f08fe6403" },
       { text: "书看完了，布鲁克林的树影仍在眼前，你能感受到耳边似乎响着恩雅的歌曲，文字如乐符，绵长而治愈", title: "《布鲁克林有棵树》书评", date: "2026-01-21", slug: "article-aaf30958ee01" },
@@ -3192,41 +3468,26 @@ var e,t;e=this,t=function(){return function(){var e={2889:function(e,t,n){"use s
       { text: "去年的三月一号，一则新闻顶上热搜，我清楚记得那抓人眼球的标题：《地球，迎来了它真正的主人？》", title: "超人奇异故事", date: "2025-11-14", slug: "article-834f9f395879" },
       { text: "就这么答应了同伴关于探索树木园的邀约，赶巧周四下午有了空闲，不如去走一遭，还比孤伶伶一个要强", title: "“笔触校园、文彰华农”系列之十八:树木园", date: "2026-05-18", slug: "article-7fa9642fb974" },
       { text: "形似的相片交织拼凑，彼此的记忆此时融在一起，万字长的留言尽是思念，实时更新的文字尽显内心火花", title: "念旧", date: "2025-10-25", slug: "article-014f5b92805f" },
-    
       { text: "我想我应该算是喜欢极了，所以我举起了手，但在放下后又不禁思考：我又写过多少文章、抒发过几句感慨呢", title: "第一学期作文写作规划", date: "2025-09-20", slug: "article-15d7f0d29f9a" },
       { text: "幸而有这校园可以让我外出走一遭，寻思舒缓舒缓，由是安定下来情绪，便出了门", title: "“笔触校园、文彰华农”系列之十三:洪泽湖", date: "2026-04-21", slug: "article-4a7b1decd1c0" },
-      { text: "入门便是铺展在墙面的世界地图，其上，标着世界上一些热带亚热带地区的诸如蝶、蛾等的代表性昆虫", title: "“笔触校园、文彰华农”系列之十一:热带亚热带昆虫博物馆", date: "2026-04-03", slug: "article-18171bcb704e" },
       { text: "何非的行径，使我们对观众生出的恐慌与抗拒情绪有迹可循", title: "《消失的她》影评", date: "2026-03-19", slug: "article-2aa0c47028d5" },
-      { text: "我第一次来到这里，是在开学后的入学教育活动中", title: "“笔触校园、文彰华农”系列之三:华南农业博物馆", date: "2026-02-05", slug: "article-e47e87f61915" },
       { text: "**假如生命是一朵花，**", title: "诗 · 假如生命是一朵花， · 山上花好丰繁，", date: "2026-04-06", slug: "article-570a4f1dd201" },
       { text: "稍不注意，看叶的目光被夕阳烧透，冷清的天色照进心窗，夜晚来了，浅浅的凉意，攀附上光着的脚踝与脖颈", title: "空", date: "2026-01-24", slug: "article-b7612b71c085" },
-      { text: "一览室内，是错综摆置的一竖竖展柜，满满当当的藏品填满柜子，就连校农博馆的昆虫展厅的标本也是出产自此的", title: "“笔触校园、文彰华农”系列之十一:热带亚热带昆虫博物馆", date: "2026-04-03", slug: "article-18171bcb704e" },
       { text: "我期盼着写出犀利的文章来，可若自作主张地随意发声，毫无逻辑情理，那还是不便做的好", title: "第二学期春夏段写作总结", date: "2026-06-08", slug: "article-342fbcae897a" },
-      { text: "本篇叙述有关恋情的内容", title: "情感具象化（1）", date: "2025-09-25", slug: "article-ea3b4a8ad04d" },
       { text: "”我们不禁发问，若是真正入了大道，又岂会因眼前种种动摇颇多，惦念至此", title: "读《悉达多》第一部有感", date: "2026-03-10", slug: "article-c7c42e5c57b8" },
       { text: "山林枝叶树摆，晃呀晃，月娘无言，只挑逗式地跟了我一路，指点我这儿江水滚滚，提醒我那儿烟火轰隆", title: "随笔简录", date: "2026-02-26", slug: "article-26f621f8ec8a" },
       { text: "我先去了丁颖纪念馆，而后再移步至隔壁的卢永根纪念展", title: "“笔触校园、文彰华农”系列之二十:丁颖纪念馆、卢永根先进事迹陈列展", date: "2026-06-02", slug: "article-7264aa24aa53" },
       { text: "往来学子步履匆匆，鲜少有人驻足细赏，它便安安静静卧在校园一隅，守着独属于自己的清幽", title: "“笔触校园、文彰华农”系列之十三:昭阳湖", date: "2026-04-15", slug: "article-1b2b45c9dde4" },
       { text: "你瞧，“天堂伞”，多圣洁的名字", title: "《布鲁克林有棵树》书评", date: "2026-01-21", slug: "article-aaf30958ee01" },
-      { text: "环绕这湖泊，有人懒散漫着步，兴许是年过花甲双鬓斑白的老人，走走停停", title: "“笔触校园、文彰华农”系列之十七:鄱阳湖", date: "2026-05-15", slug: "article-e37a14020877" },
-      { text: "十分正确，大学的时间是非常自由的，你可以将时间分配给任何你想要去做的事情上", title: "大学学习的困惑", date: "2025-11-04", slug: "article-a96f097f9454" },
       { text: "记得起，大同离世后，我同妈妈说，“一个很知名的歌手他最近去世了", title: "梦想家", date: "2026-02-17", slug: "article-bafdd9622069" },
-      { text: "在小区地下室，教练是个五十多岁的男人，姓刘，学生们叫他刘哥", title: "学游泳", date: "2026-05-24", slug: "article-2a7666c084f9" },
-      { text: "江向晚——19岁女大学生", title: "晚霞", date: "2026-05-21", slug: "article-0fa5329b75b2" },
-      { text: "那么这些新词是否有其共性呢", title: "刘美君教授讲座报道", date: "2025-11-24", slug: "article-dea90da24831" },
       { text: "这样的冬天怎么能算冬天", title: "空", date: "2026-01-24", slug: "article-b7612b71c085" },
       { text: "因此在这儿参观可务须要有专门的讲解老师，听着看着，视听结合，这才算真正游览了、了解了这一处景观", title: "“笔触校园、文彰华农”系列之九:水稻生产机械化博览馆", date: "2026-03-22", slug: "article-10556b706f82" },
       { text: "无云的夜里，她在天上挂了多久飘带，香飘了一路，飘了一夜，飘了一年，迷得我日思夜想，恨不得落泪", title: "随笔简录", date: "2026-02-26", slug: "article-26f621f8ec8a" },
       { text: "进一步来说，又能否利用它来预测不断变迁的词语的兴衰", title: "刘美君教授讲座报道", date: "2025-11-24", slug: "article-dea90da24831" },
-      { text: "红满堂，起初光听名字，我不知道它究竟是什么样的建筑，有什么功能呢", title: "“笔触校园、文彰华农”系列之二：红满堂", date: "2026-01-30", slug: "article-bb2444ccf574" },
-      { text: "待蒸蛋机叮咚一声，陈波这才决定下楼溜达两圈，听说附近新开了家咖啡店，想去看看", title: "灰尘中的叹息", date: "2025-11-09", slug: "article-b6fc0cf3dec3" },
       { text: "雨来，浇灭狂乱的火，", title: "呼号", date: "2026-05-06", slug: "article-5e064f2f61e5" },
-      { text: "根据报道，两天两夜的时间里，它们什么也没干，就那样定格在太平洋中心上空，直到有人出现，尝试与其交流", title: "超人奇异故事", date: "2025-11-14", slug: "article-834f9f395879" },
-      { text: "印象里它是火红的，而不似眼前与周遭遥相呼应的翠绿", title: "“笔触校园、文彰华农”系列之十二:善境花园", date: "2026-04-12", slug: "article-aae1c6ba555d" },
-      { text: "日常练笔中，我开始有意识地运用课程所学审视自己的文字", title: "“基础写作”课程学习总结", date: "2025-12-09", slug: "article-85e2c3ee50ef" },
       { text: "高中的时光固然煎熬，但在这三年的熬煮里也不免酝酿出甘甜", title: "念旧", date: "2025-10-25", slug: "article-014f5b92805f" },
-      { text: "我的内心突发感触，不由得生发出这样的几句来", title: "“笔触校园、文彰华农”系列之十三:洪泽湖", date: "2026-04-21", slug: "article-4a7b1decd1c0" },
       { text: "有的孩子喝的奶是凉的，有的是温热的，有的孩子连瓶子都没见到过", title: "情感具象化（2）", date: "2025-10-15", slug: "article-06d271ddd4e9" },
+      { text: "小时候，妈妈总是说，她梦见在游乐场里、在家楼下，梦见姐姐丢了、我丢了，她总是在梦里找我们，找得总要流下眼泪来，直到今天，那印象里小小的姐弟俩，转而在梦里找寻她，找得总要留下眼泪来。", title: "情感具象化（2）", date: "2025-10-15", slug: "article-06d271ddd4e9" },
       { text: "理论与观念的转变同样需要落实到创作实践当中，唯在实践中能真正实现我创作的诉求", title: "全部写作总结", date: "2026-06-14", slug: "article-474d055d7a52" },
       { text: "陈波哆哆嗦嗦，在被窝里套上羊毛衫，灰头土脸地到洗手间里放水", title: "灰尘中的叹息", date: "2025-11-09", slug: "article-b6fc0cf3dec3" },
       { text: "在提不起劲的时来上一首情绪高亢的歌，自己重新提振起信心来……", title: "谈：音乐之于生活的不可或缺", date: "2026-02-11", slug: "article-3eb8e2042a69" },
@@ -3252,7 +3513,21 @@ var e,t;e=this,t=function(){return function(){var e={2889:function(e,t,n){"use s
       { text: "我的好友听了一定打趣我，毕竟这些日子可没少见我与她呆在一起", title: "雨天", date: "2026-04-18", slug: "article-991f08fe6403" },
       { text: "此版本姑姑是被山上老虎叼走的）”，是故此鸟又称为“姑虎鸟", title: "乡下小记", date: "2026-03-04", slug: "article-8f08ad3ebe2c" },
       { text: "”我的妈妈回答，生老病死是人生常态，不管什么时候，都有人在离去", title: "梦想家", date: "2026-02-17", slug: "article-bafdd9622069" },
-      { text: "一名女子对着电话那头说:“现在做什么都没用了，结束了，完了，我今天晚上就离开镇子", title: "落日", date: "2026-02-02", slug: "article-c5fd5226aa68" },];
+      { text: "一名女子对着电话那头说:“现在做什么都没用了，结束了，完了，我今天晚上就离开镇子", title: "落日", date: "2026-02-02", slug: "article-c5fd5226aa68" },
+    
+      { text: "每当到书店，都仿若朝圣一般，书的光就此融化掉广州的喧哗", title: "书", date: "2026-03-25", slug: "article-90b10b82cf51" },
+      { text: "一点波纹水里骤环圆展，鱼声惊动，洗净了绸缎似的鄱阳湖水", title: "笔触校园·鄱阳湖", date: "2026-05-15", slug: "article-e37a14020877" },
+      { text: "湿地公园静静潜在行政楼前，一个学期飞一样过去了", title: "笔触校园·湿地公园", date: "2026-02-23", slug: "article-e99707a792c7" },
+      { text: "善境花园，光听名字便觉仿若一处云里雾里、有如道观一样境界的地方", title: "笔触校园·善境花园", date: "2026-04-12", slug: "article-aae1c6ba555d" },
+      { text: "从华农地铁口出来，一路上路过洪泽湖畔，灰白色建筑在视野当中一站便是百年", title: "笔触校园·农林讲习所门楼", date: "2026-02-08", slug: "article-f04412e73ae7" },
+      { text: "竹铭草海横卧在教学楼之间，其名称由来于丁颖教授的号", title: "笔触校园·竹铭草海", date: "2026-03-07", slug: "article-7dacdffeb4d8" },
+      { text: "几日前看了史铁生《记忆与印象2》，唤醒了我久远以前的记忆，像一枚石子投进深潭", title: "记忆与印象", date: "2026-06-05", slug: "article-fe493f3c1f3f" },
+      { text: "作为一个极具感性的人，若从正面说，或许会被人称作有艺术家的潜质", title: "情感具象化（1）", date: "2025-09-25", slug: "article-ea3b4a8ad04d" },
+      { text: "千穗草海，第一次来时一心念着任务与得分，没有察觉脚下土地的分量", title: "笔触校园·千穗草海", date: "2026-01-18", slug: "article-21e59dfe3844" },
+      { text: "酸奶文化馆，光听名字便以为是纪念馆建筑，未料竟是一间飘着奶香的咖啡屋", title: "笔触校园·酸奶文化馆", date: "2026-02-14", slug: "article-1b816857340a" },
+      { text: "昆虫在博物馆里静静诉说着被忽略的世界，我却从未真正看见它们", title: "笔触校园·昆虫博物馆", date: "2026-04-03", slug: "article-18171bcb704e" },
+      { text: "农业也是有其历史的，从刀耕火种到AI赋能的当代，梳理自身农业历史必不可少", title: "笔触校园·农史特藏室", date: "2026-03-28", slug: "article-f3963bf15f3d" },
+    ];
 
     // ===== 博客文章数据 =====
     // 精选 = 文章自身的 pinned 字段（单一数据源）。编辑器复选框与列表/卡片的
@@ -6305,6 +6580,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 - 增加管理员登录功能。
 - 天气动效二次迭代：去除画出的天空渐变、收紧模糊光带、多云云朵锚定页面顶端（下滚随页面离开）、云体更写实。
 
+## 2026-07-28
+- 多云云朵超写实化：三圈几何风 → 多层渐变气泡叠加（metaball），三 pass 渲染（底部阴影→云体主体→顶部高光），零描边、软边缘、体积感。15–25 个随机气泡构成不规则自然云形。
+- 导航栏 USER_QUOTES 扩充 89→101 条（笔触校园系列 + 其他）。
+
 ## 2026-07-15
 - 接入可插拔后端适配器（评论 / 点赞 / 访问统计走统一 Backend 接口）。
 - 文章续读：按 slug 持久化阅读进度，首次从头、看过续读。
@@ -7108,7 +7387,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <button class="btn btn-primary" onclick="doLogin()">登录</button>
         </div>
       `;
-      document.getElementById("modal-overlay").classList.add("open");
+      document.body.style.overflow = "hidden"; document.getElementById("modal-overlay").classList.add("open"); document.getElementById("modal-overlay").addEventListener("wheel", _stopWheelProp);
       setTimeout(() => { const u = document.getElementById("login-user"); if (u) u.focus(); }, 300);
     }
 
@@ -7148,12 +7427,17 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
     }
 
+    /* modal 打开时截断所有滚轮事件，阻止其冒泡到 window 被 Lenis 拦截 */
+    function _stopWheelProp(e) { e.stopPropagation(); }
+
     function closeModal() {
       // 若编辑器处于打开状态，关闭前先兜底存草稿（防浏览器返回等途径关闭时丢字）
       const ed = document.getElementById("edit-content");
       if (ed) flushAutosave();
       stopAutosave(); // 关闭时停止自动保存计时（缓冲保留以便下次恢复）
       document.getElementById("modal-overlay").classList.remove("open");
+      document.body.style.overflow = "";
+      document.getElementById("modal-overlay").removeEventListener("wheel", _stopWheelProp);
     }
 
     function closeEditorCancel() {
@@ -7197,15 +7481,49 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <option value="讲座报道" ${post && post.category === '讲座报道' ? 'selected' : ''}>讲座报道</option>
             <option value="调研报告" ${post && post.category === '调研报告' ? 'selected' : ''}>调研报告</option>
             <option value="戏剧" ${post && post.category === '戏剧' ? 'selected' : ''}>戏剧</option>
+            <option value="作者手记" ${post && post.category === '作者手记' ? 'selected' : ''}>作者手记</option>
           </select>
         </div>
         <div class="field">
-          <label>标签 (用逗号分隔)</label>
-          <input type="text" id="edit-tags" value="${post ? post.tags.join(', ') : ''}" placeholder="散文, 随笔, 生活">
+          <label>标签</label>
+          <input type="hidden" id="edit-tags" value="${post ? post.tags.join(', ') : ''}">
+          <div class="picker" id="tag-picker">
+            <div class="picker-trigger" onclick="toggleTagPicker()">
+              <span class="picker-value placeholder" id="tag-picker-value">选择标签</span>
+              <span class="picker-arrow">▼</span>
+            </div>
+            <div class="picker-panel" id="tag-picker-panel">
+              <div class="picker-options" id="tag-picker-options"></div>
+              <div class="picker-add">
+                <input type="text" id="tag-new-input" placeholder="新标签" onkeydown="if(event.key==='Enter'){event.preventDefault();addNewTag();}">
+                <button type="button" onclick="addNewTag()">＋</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="field">
-          <label>系列 / 合集 (多个用逗号分隔，用于「专题」页归类)</label>
-          <input type="text" id="edit-series" value="${post ? (Array.isArray(post.series) ? post.series.join(', ') : (post.series || '')) : ''}" placeholder="如：入学日记, 华农四季">
+          <label>系列 / 合集（可多选，用于「专题」页归类）</label>
+          <input type="hidden" id="edit-series" value="${post ? (Array.isArray(post.series) ? post.series.join(', ') : (post.series || '')) : ''}">
+          <div class="picker" id="series-picker">
+            <div class="picker-trigger" onclick="toggleSeriesPicker()">
+              <span class="picker-value placeholder" id="series-picker-value">选择系列</span>
+              <span class="picker-arrow">▼</span>
+            </div>
+            <div class="picker-panel" id="series-picker-panel">
+              <div class="picker-options" id="series-picker-options"></div>
+              <div class="picker-add">
+                <input type="text" id="series-new-input" placeholder="新专题" onkeydown="if(event.key==='Enter'){event.preventDefault();addNewSeries();}">
+                <button type="button" onclick="addNewSeries()">＋</button>
+              </div>
+            </div>
+          </div>
+          <p class="excerpt-hint">点击展开选择系列；没有合适的就输入新专题名字。</p>
+        </div>
+        <div class="field">
+          <label>精选文段 / 摘要（留空则自动从正文生成前 80 字）</label>
+          <textarea id="edit-excerpt" rows="3" placeholder="从文中挑一句最打动人的话……">${post ? (post.excerpt || '').replace(/</g, '&lt;') : ''}</textarea>
+          <button type="button" class="excerpt-pick" onclick="setExcerptFromSelection()">✦ 将选中文字设为精选文段</button>
+          <p class="excerpt-hint">用法：在下方正文里用鼠标划选一句 → 点此按钮，选中文字即写入此处。</p>
         </div>
         <div class="field editor-toggles">
           <label class="toggle-inline"><input type="checkbox" id="edit-draft" ${post && post.draft ? 'checked' : ''}> 存为草稿（暂不公开，仅自己可见）</label>
@@ -7268,13 +7586,15 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       // 自动保存：恢复较新的缓冲，并启动定时保存
       _autosaveSlug = post ? post.slug : "new";
       tryRestoreAutosave(_autosaveSlug, post);
+      renderTagPicker();
+      renderSeriesPicker();
       // 恢复已有文章的底图设置
       if (post && post.bg && post.bg.src) {
         currentBg = { src: post.bg.src, name: post.bg.name || '', opacity: (typeof post.bg.opacity === 'number' ? post.bg.opacity : 0.15) };
       }
       renderBgPanel();
       startAutosave(_autosaveSlug);
-      document.getElementById("modal-overlay").classList.add("open");
+      document.body.style.overflow = "hidden"; document.getElementById("modal-overlay").classList.add("open"); document.getElementById("modal-overlay").addEventListener("wheel", _stopWheelProp);
     }
 
     // ===== 自动保存 =====
@@ -7295,6 +7615,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           series: document.getElementById("edit-series")?.value || "",
           draft: document.getElementById("edit-draft")?.checked || false,
           pinned: document.getElementById("edit-pinned")?.checked || false,
+          excerpt: document.getElementById("edit-excerpt")?.value || "",
           content: getEditorMarkdown(),
           savedAt: new Date().toISOString()
         };
@@ -7330,6 +7651,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         series: document.getElementById("edit-series")?.value || "",
         draft: document.getElementById("edit-draft")?.checked || false,
         pinned: document.getElementById("edit-pinned")?.checked || false,
+        excerpt: document.getElementById("edit-excerpt")?.value || "",
         content: getEditorMarkdown(),
         savedAt: new Date().toISOString()
       };
@@ -7361,6 +7683,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       set("edit-date", buf.date);
       set("edit-tags", buf.tags);
       set("edit-series", buf.series);
+      set("edit-excerpt", buf.excerpt);
       const ed = document.getElementById("edit-content");
       if (ed) ed.innerHTML = renderMarkdown(buf.content);
       const d = document.getElementById("edit-draft"); if (d) d.checked = !!buf.draft;
@@ -7439,6 +7762,115 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       return md.replace(/\n{3,}/g, "\n\n");
     }
 
+    function setExcerptFromSelection() {
+      const ta = document.getElementById("edit-excerpt");
+      const ed = document.getElementById("edit-content");
+      if (!ta || !ed) return;
+      let text = "";
+      const sel = window.getSelection && window.getSelection();
+      if (sel && sel.rangeCount > 0 && ed.contains(sel.anchorNode)) text = sel.toString();
+      text = text.trim();
+      if (!text) { showToast("请先在正文里用鼠标选中一句，再点此按钮"); return; }
+      ta.value = text;
+      showToast("✅ 已把选中文字设为精选文段");
+    }
+
+    // ===== 系列多选（编辑器） =====
+    let USER_SERIES = (() => { try { return JSON.parse(localStorage.getItem("zhuyan-user-series") || "[]"); } catch (_) { return []; } })();
+    function getAllSeriesNames() {
+      const set = new Set();
+      SERIES_DEFS.forEach(d => set.add(d.name));
+      USER_SERIES.forEach(n => set.add(n));
+      getAllPosts().forEach(p => { if (p.series) { (Array.isArray(p.series) ? p.series : String(p.series).split(/[,，、]/)).forEach(n => { n = (n || "").trim(); if (n) set.add(n); }); } });
+      return Array.from(set).sort((a, b) => a.localeCompare(b, "zh"));
+    }
+    // ===== 编辑器下拉多选（标签、系列） =====
+    function getSelectedTags() {
+      return (document.getElementById("edit-tags")?.value || "").split(/[,，、]/).map(t => t.trim()).filter(Boolean);
+    }
+    function setTagsValue(arr) {
+      const el = document.getElementById("edit-tags");
+      if (el) el.value = arr.join(", ");
+    }
+    function renderTagPicker() {
+      const panel = document.getElementById("tag-picker-options");
+      const valueEl = document.getElementById("tag-picker-value");
+      if (!panel) return;
+      const selected = getSelectedTags();
+      const allTags = getAllTags().map(t => t.tag);
+      const combined = Array.from(new Set(allTags.concat(selected))).sort((a, b) => a.localeCompare(b, "zh"));
+      panel.innerHTML = combined.length ? combined.map(t => `
+        <label class="picker-option"><input type="checkbox" value="${t.replace(/"/g, "&quot;")}" ${selected.includes(t) ? "checked" : ""} onchange="syncTagPicker()"> ${t}</label>
+      `).join("") : `<span class="excerpt-hint">还没有标签，输入一个创建。</span>`;
+      valueEl.textContent = selected.length ? selected.join("、") : "选择标签";
+      valueEl.classList.toggle("placeholder", !selected.length);
+      setTagsValue(selected);
+    }
+    function syncTagPicker() {
+      const checked = Array.from(document.querySelectorAll('#tag-picker-options input[type=checkbox]:checked')).map(c => c.value);
+      setTagsValue(checked);
+      renderTagPicker();
+    }
+    function toggleTagPicker() {
+      const picker = document.getElementById("tag-picker");
+      if (picker) picker.classList.toggle("open");
+    }
+    function addNewTag() {
+      const input = document.getElementById("tag-new-input");
+      const name = (input?.value || "").trim();
+      if (!name) return;
+      const selected = getSelectedTags();
+      if (!selected.includes(name)) selected.push(name);
+      setTagsValue(selected);
+      renderTagPicker();
+      if (input) input.value = "";
+    }
+
+    function renderSeriesPicker() {
+      const panel = document.getElementById("series-picker-options");
+      const hidden = document.getElementById("edit-series");
+      const valueEl = document.getElementById("series-picker-value");
+      if (!panel || !hidden) return;
+      const selected = hidden.value.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
+      const names = getAllSeriesNames();
+      panel.innerHTML = names.length ? names.map(n => `
+        <label class="picker-option"><input type="checkbox" value="${n.replace(/"/g, "&quot;")}" ${selected.includes(n) ? "checked" : ""} onchange="syncSeriesPicker()"> ${n}</label>
+      `).join("") : `<span class="excerpt-hint">还没有系列，输入一个创建。</span>`;
+      valueEl.textContent = selected.length ? selected.join("、") : "选择系列";
+      valueEl.classList.toggle("placeholder", !selected.length);
+    }
+    function syncSeriesPicker() {
+      const checked = Array.from(document.querySelectorAll('#series-picker-options input[type=checkbox]:checked')).map(c => c.value);
+      const hidden = document.getElementById("edit-series");
+      if (hidden) hidden.value = checked.join(", ");
+      renderSeriesPicker();
+    }
+    function toggleSeriesPicker() {
+      const picker = document.getElementById("series-picker");
+      if (picker) picker.classList.toggle("open");
+    }
+    function addNewSeries() {
+      const input = document.getElementById("series-new-input");
+      const name = (input?.value || "").trim();
+      if (!name) return;
+      const trimmed = name;
+      if (!USER_SERIES.includes(trimmed)) { USER_SERIES.push(trimmed); try { localStorage.setItem("zhuyan-user-series", JSON.stringify(USER_SERIES)); } catch (_) {} }
+      const hidden = document.getElementById("edit-series");
+      const cur = hidden.value.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
+      if (!cur.includes(trimmed)) cur.push(trimmed);
+      hidden.value = cur.join(", ");
+      renderSeriesPicker();
+      if (input) input.value = "";
+      showToast("✅ 已新建并勾选专题：「" + trimmed + "」");
+    }
+
+    // 点击下拉外部关闭
+    document.addEventListener("click", e => {
+      if (!e.target.closest(".picker")) {
+        document.querySelectorAll(".picker.open").forEach(p => p.classList.remove("open"));
+      }
+    });
+
     function savePost(oldSlug) {
       const title = document.getElementById("edit-title").value.trim();
       const date = document.getElementById("edit-date").value;
@@ -7463,9 +7895,15 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
       const slug = oldSlug || ("user-" + Date.now().toString(36));
       const imgCount = (content.match(IMG_RE) || []).length;
-      let excerpt = content.replace(IMG_RE, " ").replace(/[#>*_`~]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
-      if (!excerpt) excerpt = imgCount > 0 ? `（含 ${imgCount} 张图片）` : "（无文字内容）";
-      else if (excerpt.length >= 80) excerpt += "…";
+      const userExcerpt = (document.getElementById("edit-excerpt") ? document.getElementById("edit-excerpt").value.trim() : "").trim();
+      let excerpt;
+      if (userExcerpt) {
+        excerpt = userExcerpt.length > 120 ? userExcerpt.slice(0, 120) + "…" : userExcerpt;
+      } else {
+        excerpt = content.replace(IMG_RE, " ").replace(/[#>*_`~]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+        if (!excerpt) excerpt = imgCount > 0 ? `（含 ${imgCount} 张图片）` : "（无文字内容）";
+        else if (excerpt.length >= 80) excerpt += "…";
+      }
 
       const now = new Date().toISOString().slice(0,10);
       const post = { slug, title, date, category, tags, series, draft, pinned, excerpt, content, updatedAt: now, bg: currentBg };
@@ -7560,7 +7998,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <button class="btn btn-primary" onclick="saveBioContent()">保存</button>
         </div>
       `;
-      document.getElementById("modal-overlay").classList.add("open");
+      document.body.style.overflow = "hidden"; document.getElementById("modal-overlay").classList.add("open"); document.getElementById("modal-overlay").addEventListener("wheel", _stopWheelProp);
     }
 
     function saveBioContent() {
@@ -7585,7 +8023,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <button class="btn btn-primary" onclick="saveChangelogContent()">保存</button>
         </div>
       `;
-      document.getElementById("modal-overlay").classList.add("open");
+      document.body.style.overflow = "hidden"; document.getElementById("modal-overlay").classList.add("open"); document.getElementById("modal-overlay").addEventListener("wheel", _stopWheelProp);
     }
     function saveChangelogContent() {
       const text = document.getElementById("changelog-content").value.trim();
@@ -7608,7 +8046,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <button class="btn btn-primary" onclick="saveHandbookContent()">保存</button>
         </div>
       `;
-      document.getElementById("modal-overlay").classList.add("open");
+      document.body.style.overflow = "hidden"; document.getElementById("modal-overlay").classList.add("open"); document.getElementById("modal-overlay").addEventListener("wheel", _stopWheelProp);
     }
     function saveHandbookContent() {
       const text = document.getElementById("handbook-content").value.trim();
@@ -7686,7 +8124,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     function sharePost(slug) {
       const post = getAllPosts().find(p => p.slug === slug);
       const title = post ? post.title : "铸言";
-      const url = new URL("posts/" + encodeURIComponent(slug) + ".html", location.href).href;
+      const url = location.origin + location.pathname + "#/post/" + encodeURIComponent(slug);
       const data = { title: title, text: "来自「铸言」的文章：" + title, url: url };
       if (navigator.share) {
         navigator.share(data).catch(() => {});
@@ -7832,7 +8270,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
         </div>
       `;
-      document.getElementById("modal-overlay").classList.add("open");
+      document.body.style.overflow = "hidden"; document.getElementById("modal-overlay").classList.add("open"); document.getElementById("modal-overlay").addEventListener("wheel", _stopWheelProp);
     }
     // ===== GitHub 同步相关 =====
     function saveGithubToken() {
@@ -8236,7 +8674,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     // ===== 筛选状态 =====
-    let currentFilter = { category: null, tag: null, featured: false };
+    let currentFilter = { category: null, tag: null, featured: false, series: null };
     let filterOpen = false;
     let currentSearch = "";
 
@@ -8265,13 +8703,19 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       if (currentFilter.featured) posts = posts.filter(p => p.pinned);
       if (currentFilter.category) posts = posts.filter(p => p.category === currentFilter.category);
       if (currentFilter.tag) posts = posts.filter(p => p.tags.some(t => t.toLowerCase() === currentFilter.tag.toLowerCase()));
+      if (currentFilter.series) posts = posts.filter(p => {
+        if (!p.series) return false;
+        const names = Array.isArray(p.series) ? p.series : String(p.series).split(/[,，、]/);
+        return names.some(n => (n || "").trim() === currentFilter.series);
+      });
       if (currentSearch) {
         const q = currentSearch.toLowerCase();
         posts = posts.filter(p =>
           p.title.toLowerCase().includes(q) ||
           p.content.toLowerCase().includes(q) ||
           (p.category && p.category.toLowerCase().includes(q)) ||
-          p.tags.some(t => t.toLowerCase().includes(q))
+          p.tags.some(t => t.toLowerCase().includes(q)) ||
+          (p.series && (Array.isArray(p.series) ? p.series : String(p.series).split(/[,，、]/)).some(s => s.toLowerCase().includes(q)))
         );
       }
       return posts.sort((a, b) => {
@@ -8381,6 +8825,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     function navigate(route, param, opts = {}) {
+      document.body.classList.remove("bichu-page");
+      document.body.classList.remove("series-page");
+      document.body.classList.remove("series-detail-bichu");
+      document.body.classList.remove("post-page");
       const { replace = false, saveScroll = true } = opts;
       const currentHash = window.location.hash.slice(1) || "home";
       const currentRoute = currentHash.split("/")[0];
@@ -8427,7 +8875,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const param = parts[1] ? decodeURIComponent(parts[1]) : null;
 
       document.querySelectorAll(".nav a").forEach(a => a.classList.remove("active"));
-      const navMap = { home: "nav-home", tags: "nav-tags", tag: "nav-tags", series: "nav-series", "series-detail": "nav-series", guestbook: "nav-guestbook", about: "nav-about", timeline: "nav-timeline", post: "nav-home" };
+      const navMap = { home: "nav-home", tags: "nav-tags", tag: "nav-tags", series: "nav-series", "series-detail": "nav-series", bichu: "nav-series", featured: "nav-featured", guestbook: "nav-guestbook", about: "nav-about", timeline: "nav-timeline", post: "nav-home" };
       const navId = navMap[route] || "nav-home";
       const navEl = document.getElementById(navId);
       if (navEl) navEl.classList.add("active");
@@ -8443,17 +8891,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       } else if (route === "timeline") {
         restored = restoreScrollState("timeline");
       }
-      if (route === "post" && param) {
-        // 续读：有保存的阅读进度则恢复到该位置；首次阅读（无进度）从头开始
-        const y = getReadingProgress(param);
-        if (y) {
-          setTimeout(() => window.scrollTo({ top: y, behavior: "instant" }), 0);
-        } else {
-          window.scrollTo(0, 0);
-        }
-      } else if (!restored) {
+      // 非文章页：简单滚回顶部
+      if (route !== "post" && !restored) {
         window.scrollTo(0, 0);
       }
+      // 文章页的滚动在 renderPost 后处理（避免内容未渲染时 scrollTo 被 Lenis 覆盖）
 
       // 重新触发动画 + 页面过渡
       const app = document.getElementById("app");
@@ -8463,7 +8905,35 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
 
       switch (route) {
         case "home": renderHome(); break;
-        case "post": renderPost(param); break;
+        case "post": document.body.classList.add("post-page"); renderPost(param);
+          // 渲染完成后：双 rAF 确保 DOM 已布局 → 用 Lenis.scrollTo(immediate) 强制瞬间到顶
+          // 不用 window.scrollTo（会被 Lenis 拦截做平滑动画，时序不可靠）
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              const _scrollToTop = () => {
+                const lenis = window.__lenis;
+                if (lenis && lenis.scrollTo) {
+                  lenis.scrollTo(0, { immediate: true, force: true });
+                } else {
+                  window.scrollTo({ top: 0, behavior: "instant" });
+                }
+              };
+              const y = getReadingProgress(param);
+              if (y) {
+                const lenis = window.__lenis;
+                if (lenis && lenis.scrollTo) {
+                  lenis.scrollTo(y, { immediate: true, force: true });
+                } else {
+                  window.scrollTo({ top: y, behavior: "instant" });
+                }
+              } else {
+                _scrollToTop();
+              }
+              // 安全补刀：300ms 后再确认一次（评论区 iframe 等异步内容可能触发重排）
+              setTimeout(_scrollToTop, 300);
+            });
+          });
+          break;
         case "tags": renderTags(); break;
         case "tag": renderTagPosts(param); break;
         case "series": renderSeries(); break;
@@ -8472,6 +8942,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         case "tag-manage": renderTagManage(); break;
         case "about": renderAbout(); break;
         case "timeline": renderTimeline(); break;
+        case "bichu": renderBichu(); break;
+        case "featured": renderFeatured(); break;
         default: renderHome();
       }
 
@@ -8480,6 +8952,8 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
     }
 
     // ===== 页面渲染 =====
+
+
     function renderHome() {
       const app = document.getElementById("app");
       const posts = getFilteredPosts();
@@ -8494,16 +8968,31 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       filterHTML += `<div class="sort-btn ${sortMode === "asc" ? "active" : ""}" onclick="setSort('asc')">按时间正序</div>`;
       filterHTML += '</div>';
 
-      // 精选集入口
+      // 专题（精选集 + 系列 合二为一）
       const pinnedCount = getAllPosts().filter(p => p.pinned).length;
-      if (pinnedCount > 0) {
+      const allSeries = getAllSeries();
+      if (pinnedCount > 0 || allSeries.length > 0) {
         filterHTML += '<div class="filter-section">';
-        filterHTML += '<div class="filter-label">专栏</div>';
+        filterHTML += '<div class="filter-label">专题';
+        if (currentFilter.featured || currentFilter.series) filterHTML += ` <span class="filter-clear" onclick="setFilter('featured',false);setFilter('series',null)">清除</span>`;
+        filterHTML += '</div>';
         filterHTML += '<div class="filter-chips">';
-        if (currentFilter.featured) {
-          filterHTML += `<div class="filter-chip active" onclick="setFilter('featured',false)">★ 精选集 ✕</div>`;
+        if (pinnedCount > 0) {
+          if (currentFilter.featured) {
+            filterHTML += `<div class="filter-chip active" onclick="setFilter('featured',false)">★ 精选集 ✕</div>`;
+          } else {
+            filterHTML += `<div class="filter-chip" onclick="setFilter('featured',true)" style="border-color:var(--accent);color:var(--accent);">★ 精选集 <span class="chip-count">${pinnedCount}</span></div>`;
+          }
+        }
+        if (currentFilter.series) {
+          filterHTML += `<div class="filter-chip active" onclick="setFilter('series',null)">${escapeHtml(currentFilter.series)} ✕</div>`;
+          allSeries.forEach(s => {
+            if (s.name !== currentFilter.series) filterHTML += `<div class="filter-chip" onclick="setFilter('series','${escapeHtml(s.name)}')">${escapeHtml(s.name)} <span class="chip-count">${s.posts.length}</span></div>`;
+          });
         } else {
-          filterHTML += `<div class="filter-chip" onclick="setFilter('featured',true)" style="border-color:var(--accent);color:var(--accent);">★ 精选集 <span class="chip-count">${pinnedCount}</span></div>`;
+          allSeries.forEach(s => {
+            filterHTML += `<div class="filter-chip" onclick="setFilter('series','${escapeHtml(s.name)}')">${escapeHtml(s.name)} <span class="chip-count">${s.posts.length}</span></div>`;
+          });
         }
         filterHTML += '</div></div>';
       }
@@ -8526,16 +9015,17 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             filterHTML += `<div class="filter-chip" onclick="setFilter('tag','${tag}')">#${tag} <span class="chip-count">${count}</span></div>`;
           });
         }
-        filterHTML += '</div></div>';
+        filterHTML += '        </div></div>';
       }
 
       filterHTML += '</div>';
 
       const dailyQuote = getDailyQuote();
+
       app.innerHTML = `
         <section class="hero">
           <h1><span class="char">铸</span><span class="char">言</span></h1>
-          <div class="hero-sub">${dailyQuote.text}</div>
+          <div class="hero-quote">${dailyQuote.text}</div>
           <div class="hero-source">—— ${dailyQuote.source}</div>
         </section>
         <section>
@@ -8543,7 +9033,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <span class="search-icon" aria-hidden="true">
               <svg viewBox="0 0 20 20" width="17" height="17"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/><line x1="13" y1="13" x2="18" y2="18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             </span>
-            <input type="text" id="search-input" placeholder="搜索标题、正文、标签、文体…" value="${currentSearch}" oninput="onSearchInput(this.value)">
+            <input type="text" id="search-input" placeholder="搜索标题、正文、标签、文体、系列…" value="${currentSearch}" oninput="onSearchInput(this.value)">
             <button class="search-clear" id="search-clear-btn" title="清除搜索" style="display:${currentSearch ? 'flex' : 'none'};" onclick="clearSearch()">✕</button>
           </div>
           <div style="margin-bottom:24px;">
@@ -8557,6 +9047,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             </div>
           </div>
           <div id="post-list"></div>
+          <div class="daily-poem-bar">
+            <span class="dp-label">每 日 古 诗</span>
+            ${dailyQuote.text} —— ${dailyQuote.source}
+          </div>
         </section>
       `;
       renderPostList();
@@ -8579,11 +9073,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       if (type === "category") currentFilter.category = value;
       else if (type === "tag") currentFilter.tag = value;
       else if (type === "featured") currentFilter.featured = value;
+      else if (type === "series") currentFilter.series = value;
       renderHome();
     }
 
     function clearFilter() {
-      currentFilter = { category: null, tag: null, featured: false };
+      currentFilter = { category: null, tag: null, featured: false, series: null };
       renderHome();
     }
 
@@ -8626,11 +9121,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
       const all = getFilteredPosts();
 
-      // 默认视图（无筛选/搜索）三栏：1.【最新】7日内发布(含精选+最新，优先) → 2.【精选】置顶但非最新 → 3.【以往其它文章】
+      // 默认视图（无筛选/搜索）两栏：1.【最新】7日内发布(含精选+最新，优先) → 2.【以往其它文章】(含精选，不再单列)
       const isDefaultView = !currentSearch && !currentFilter.category && !currentFilter.tag && !currentFilter.featured;
       const latestPosts = isDefaultView ? all.filter(p => isRecentlyUpdated(p, 7)) : [];
       const featuredPosts = isDefaultView ? all.filter(p => p.pinned && !isRecentlyUpdated(p, 7)) : [];
-      const regularPosts = isDefaultView ? all.filter(p => !p.pinned && !isRecentlyUpdated(p, 7)) : all;
+      const regularPosts = isDefaultView ? all.filter(p => !isRecentlyUpdated(p, 7)) : all;
 
       // 卡片网格模式用的单卡渲染（徽标走 meta 行，与列表视图一致）
       const gridCard = (post, i) => `
@@ -8669,12 +9164,6 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           gridHTML += `<div class="section-title"><h2>最新</h2><span class="count">${latestPosts.length}</span><span class="line"></span></div>`;
           gridHTML += `<div class="post-grid">` + latestPosts.map((post, i) => gridCard(post, i)).join("") + `</div>`;
           goff += latestPosts.length;
-          if (featuredPosts.length || regularPosts.length) gridHTML += `<div class="divider"><span>· · ·</span></div>`;
-        }
-        if (featuredPosts.length) {
-          gridHTML += `<div class="section-title"><h2>精选</h2><span class="count">${featuredPosts.length}</span><span class="line"></span></div>`;
-          gridHTML += `<div class="post-grid">` + featuredPosts.map((post, i) => gridCard(post, i)).join("") + `</div>`;
-          goff += featuredPosts.length;
           if (regularPosts.length) gridHTML += `<div class="divider"><span>· · ·</span></div>`;
         }
         if (regularPosts.length) {
@@ -8688,7 +9177,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
 
       // 默认列表模式
-      // 默认列表模式：三栏分组（latestPosts / featuredPosts / regularPosts）已在上方计算
+      // 默认列表模式：两栏分组（latestPosts / regularPosts），精选文章并入「以往其它文章」流中（卡片仍带 ★精选 徽标）
 
       let listHTML = "";
       // 统一卡片渲染：★精选 / ●最新 徽标按文章状态自动判定
@@ -8711,18 +9200,12 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
           ${post.series && post.series.length ? `<div class="post-series">${post.series.map(s => `<span class="post-tag series-tag" onclick="event.stopPropagation();navigateSeries('${String(s).replace(/'/g, "\\'")}')">${s}</span>`).join(" ")}</div>` : ""}
         </div>`;
-      // 默认视图顺序：1.【最新】 → 2.【精选】 → 3.【以往其它文章】，每栏带标题
+      // 默认视图顺序：1.【最新】 → 2.【以往其它文章】(含精选)，每栏带标题
       let offset = 0;
       if (latestPosts.length) {
         listHTML += `<div class="section-title"><h2>最新</h2><span class="count">${latestPosts.length}</span><span class="line"></span></div>`;
         listHTML += latestPosts.map((post, i) => buildCard(post, i, offset)).join("");
         offset += latestPosts.length;
-        if (featuredPosts.length || regularPosts.length) listHTML += `<div class="divider"><span>· · ·</span></div>`;
-      }
-      if (featuredPosts.length) {
-        listHTML += `<div class="section-title"><h2>精选</h2><span class="count">${featuredPosts.length}</span><span class="line"></span></div>`;
-        listHTML += featuredPosts.map((post, i) => buildCard(post, i, offset)).join("");
-        offset += featuredPosts.length;
         if (regularPosts.length) listHTML += `<div class="divider"><span>· · ·</span></div>`;
       }
       if (regularPosts.length) {
@@ -8732,6 +9215,82 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       container.innerHTML = info + listHTML + (all.length === 0 ? '<div class="loading">没有符合条件的文章</div>' : '');
 
       setTimeout(observeReveal, 30);
+    }
+
+    // ===== 首屏精选轮播 =====
+    // 取 post.pinned 文章渲染自动轮播卡片（停留 8s、墨晕轻换、点击跳文章）；
+    // 精炼句子优先取 USER_QUOTES 中该文的条目，无则回退到 excerpt。
+    let _fcTimer = null;
+    let _fcIndex = 0;
+    let _fcPosts = [];
+
+    function renderFeaturedCarousel() {
+      stopFeaturedCarousel();
+      const stage = document.getElementById("featured-carousel");
+      if (!stage) return;
+      let posts = getAllPosts().filter(p => p.pinned && !p.draft);
+      if (posts.length < 2) posts = getAllPosts().filter(p => !p.draft).slice(0, 5);
+      if (!posts.length) { stage.innerHTML = ""; return; }
+      _fcPosts = posts;
+      _fcIndex = 0;
+
+      function paperHTML(p, idx) {
+        const dist = idx; // 0 = front, 1 = behind by 10px, 2 = behind by 20px…
+        const visible = dist <= 3;
+        const qs = USER_QUOTES.filter(u => u.slug === p.slug);
+        const quote = qs.length
+          ? qs[Math.floor(Math.random() * qs.length)].text
+          : displayExcerpt(p).slice(0, 56) + (displayExcerpt(p).length > 56 ? "…" : "");
+        const meta = [p.category || "散文", formatDate(p.date)].join(" · ");
+        const offset = Math.min(dist, 3) * 10; // 0, 10, 20, 30px
+        const scale = 1 - Math.min(dist, 3) * 0.03; // 1, 0.97, 0.94, 0.91
+        const opacity = 1 - Math.min(dist, 3) * 0.22; // 1, 0.78, 0.56, 0.34
+        return visible ? `<div class="fc-paper${dist === 0 ? ' is-front' : ''}"
+          style="z-index:${posts.length - dist};top:${offset}px;transform:scale(${scale});opacity:${opacity};"
+          onclick="navigate('post','${p.slug}')"
+          data-idx="${idx}">
+          <div class="fc-meta">${meta}</div>
+          <div class="fc-title">${p.title}</div>
+          <div class="fc-quote">${quote}</div>
+          <div class="fc-cta">展 开 阅 读 →</div>
+        </div>` : "";
+      }
+
+      const cards = posts.map((p, i) => paperHTML(p, i)).join("");
+      const dots = posts.map((_, i) => `<button class="fc-dot${i === 0 ? " active" : ""}" data-idx="${i}" onclick="event.stopPropagation();fcGo(${i})" aria-label="第 ${i + 1} 篇"></button>`).join("");
+
+      stage.innerHTML = `
+        <div class="fc-head"><span class="fc-kicker">精 选 代 表 作</span></div>
+        <div class="fc-stack">${cards}</div>
+        <div class="fc-dots">${dots}</div>
+      `;
+      const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduce && posts.length > 1) _fcTimer = setInterval(fcNext, 8000);
+    }
+
+    function fcGo(i) {
+      if (!_fcPosts.length) return;
+      _fcIndex = ((i % _fcPosts.length) + _fcPosts.length) % _fcPosts.length;
+      // 重建卡片层叠（最直接：重算样式）
+      document.querySelectorAll(".fc-paper").forEach((el, j) => {
+        const dist = (j - _fcIndex + _fcPosts.length) % _fcPosts.length;
+        const visible = dist <= 3;
+        const offset = Math.min(dist, 3) * 10;
+        const scale = 1 - Math.min(dist, 3) * 0.03;
+        const opacity = 1 - Math.min(dist, 3) * 0.22;
+        el.style.zIndex = _fcPosts.length - dist;
+        el.style.top = offset + "px";
+        el.style.transform = "scale(" + scale + ")";
+        el.style.opacity = opacity;
+        el.style.display = visible ? "" : "none";
+        el.classList.toggle("is-front", dist === 0);
+      });
+      document.querySelectorAll(".fc-dot").forEach((d, j) => d.classList.toggle("active", j === _fcIndex));
+    }
+    function fcNext() { fcGo(_fcIndex + 1); }
+    function stopFeaturedCarousel() {
+      if (_fcTimer) { clearInterval(_fcTimer); _fcTimer = null; }
+      _fcPosts = [];
     }
 
     function renderPost(slug) {
@@ -8996,6 +9555,11 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         match: p => p.title.includes("笔触") || (p.category && p.category.includes("校园纪游")) || p.tags.some(t => t === "校园纪游"),
       },
       {
+        name: "作者手记",
+        desc: "写作背后的事——创作谈、碎念与自述",
+        match: p => (p.series && String(p.series).split(/[,，、]/).map(s => s.trim()).includes("作者手记")) || (p.category && p.category === "作者手记") || p.title.includes("手记"),
+      },
+      {
         name: "读书笔记",
         desc: "读书心得、学习笔记与总结",
         match: p => p.title.includes("读书") || p.title.includes("阅读") || p.title.includes("笔记") || p.title.includes("书评") || p.title.includes("总结"),
@@ -9017,10 +9581,54 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       },
     ];
 
+    // ===== 笔触校园 · 校园记忆地图 =====
+    // 艺术化排布（非真实地理坐标），沿游览顺序串联 21 处地标
+    // 坐标基于华农官方手绘校园地图（campus-map.jpg，1600×715）的像素位置，与底图 1:1 对应
+    const CAMPUS_MAP = [
+      { slug: "article-5e19a0845801", no: "序", name: "初识华农", x: 605, y: 546, quote: "报到当天，启林北的宿舍区叫我印象深刻，初觉偏僻难寻，在当晚的探索我又见证这儿晚间的美丽" },
+      { slug: "article-21e59dfe3844", no: "之一", name: "千穗草海", x: 425, y: 294, quote: "千穗草海，第一次来时一心念着任务与得分，没有察觉脚下土地的分量" },
+      { slug: "article-bb2444ccf574", no: "之二", name: "红满堂", x: 629, y: 349, quote: "又会有什么样的人在台上发言" },
+      { slug: "article-e47e87f61915", no: "之三", name: "华南农业博物馆", x: 627, y: 311, quote: "学校的农博馆，有着华南地区首个以农业与自然资源为主题的博物馆的名头" },
+      { slug: "article-f04412e73ae7", no: "之四", name: "农林讲习所门楼", x: 670, y: 406, quote: "从华农地铁口出来，一路上路过洪泽湖畔，灰白色建筑在视野当中一站便是百年" },
+      { slug: "article-1b816857340a", no: "之五", name: "华农酸奶文化馆", x: 676, y: 455, quote: "酸奶文化馆，光听名字便以为是纪念馆建筑，未料竟是一间飘着奶香的咖啡屋" },
+      { slug: "article-e99707a792c7", no: "之六", name: "湿地公园", x: 776, y: 455, quote: "湿地公园静静潜在行政楼前，一个学期飞一样过去了" },
+      { slug: "article-38bd0ae0307d", no: "之七", name: "稻香草海", x: 731, y: 436, quote: "行政楼前，一片茂盛绿树，与茵茵草地铺陈，中央是阶梯式的行政楼广场" },
+      { slug: "article-7dacdffeb4d8", no: "之八", name: "竹铭草海", x: 558, y: 270, quote: "竹铭草海横卧在教学楼之间，其名称由来于丁颖教授的号" },
+      { slug: "article-10556b706f82", no: "之九", name: "水稻生产机械化博览馆", x: 261, y: 265, quote: "在这儿参观可务须要有专门的讲解老师，听着看着，这才算真正游览了" },
+      { slug: "article-f3963bf15f3d", no: "之十", name: "农史特藏室", x: 748, y: 263, quote: "农业也是有其历史的，从刀耕火种到AI赋能的当代，梳理自身农业历史必不可少" },
+      { slug: "article-18171bcb704e", no: "之十一", name: "昆虫博物馆", x: 949, y: 177, quote: "昆虫在博物馆里静静诉说着被忽略的世界，我却从未真正看见它们" },
+      { slug: "article-aae1c6ba555d", no: "之十二", name: "善境花园", x: 1014, y: 232, quote: "善境花园，光听名字便觉仿若一处云里雾里、有如道观一样境界的地方" },
+      { slug: "article-1b2b45c9dde4", no: "之十三", name: "昭阳湖", x: 980, y: 218, quote: "风掠过湖面，带走几分燥热，也捎来草木清香，让这方湖水在喧嚣校园里，始终守着一份美与从容" },
+      { slug: "article-4a7b1decd1c0", no: "之十四", name: "洪泽湖", x: 594, y: 399, quote: "清风吹人冷，花簇碾尘埃" },
+      { slug: "article-dd4f9104c47f", no: "之十五", name: "西湖", x: 390, y: 177, quote: "这纷扰从心底湖底升天直入大脑当中，火与冷的知觉降临身体湖面" },
+      { slug: "article-19068df4f429", no: "之十六", name: "宁荫湖", x: 703, y: 218, quote: "一片光区融在你阴影里" },
+      { slug: "article-e37a14020877", no: "之十七", name: "鄱阳湖", x: 869, y: 374, quote: "一点波纹水里骤环圆展，鱼声惊动，洗净了绸缎似的鄱阳湖水" },
+      { slug: "article-7fa9642fb974", no: "之十八", name: "树木园", x: 1094, y: 386, quote: "阿铸，下午我们约了一起去学校树木园玩玩，到那儿探一探险，你要一起不？" },
+      { slug: "article-196effea27d0", no: "之十九", name: "华南农业大学艺术馆", x: 375, y: 270, quote: "零星少女题材的画交杂在展厅占多数的猫的画之间。有的抱着猫，有的没有" },
+      { slug: "article-7264aa24aa53", no: "之二十", name: "丁颖纪念馆、卢永根纪念展", x: 373, y: 284, quote: "我先去了丁颖纪念馆，而后再移步至隔壁的卢永根纪念展" },
+    ];
+
     function renderSeries() {
       const app = document.getElementById("app");
+      document.body.classList.add("series-page");
       const list = getAllSeries();
-      const seriesCards = list.map((s, idx) => {
+      const bichu = list.find(s => s.name.includes("笔触校园"));
+      const others = list.filter(s => !s.name.includes("笔触校园"));
+
+      // 特色卡：独占一行、放大，给足亮眼位置
+      const heroCard = bichu ? `
+        <div class="bichu-series-card reveal" onclick="navigate('series-detail','${list.indexOf(bichu)}')">
+          <div class="bichu-card-map" style="background-image:url('campus-map.jpg')"></div>
+          <div class="bichu-card-glass">
+            <span class="bichu-card-badge">📍 交互地图</span>
+            <h3>${bichu.name}</h3>
+            <p class="excerpt">${bichu.desc}</p>
+            <div class="bichu-card-foot"><span>${bichu.posts.length} 篇采风</span><span class="bichu-card-go">进入地图 →</span></div>
+          </div>
+        </div>` : "";
+
+      const otherCards = others.map((s) => {
+        const idx = list.indexOf(s);
         const posts = s.posts;
         return `
           <div class="post-card reveal" style="cursor:pointer;" onclick="navigate('series-detail','${idx}')">
@@ -9032,16 +9640,18 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             <h3>${s.name}</h3>
             <p class="excerpt">${s.desc}</p>
             <div class="post-tags">${posts.slice(0,3).map(p => `<span class="post-tag">${p.title.length > 12 ? p.title.slice(0,12) + '…' : p.title}</span>`).join("")}${posts.length > 3 ? `<span class="post-tag">+${posts.length-3}</span>` : ''}</div>
-          </div>
-        `;
+          </div>`;
       }).join("");
 
       app.innerHTML = `
-        <header style="margin-bottom:40px;">
+        <header style="margin-bottom:36px;">
           <h1 style="font-family:var(--font-serif);font-size:28px;font-weight:600;color:var(--fg);margin-bottom:8px;">专题</h1>
           <p style="color:var(--fg-muted);font-size:14px;">系列文章合集</p>
         </header>
-        ${seriesCards || '<div class="loading">暂无专题文章</div>'}
+        <div class="series-grid">
+          ${heroCard}
+          ${otherCards}
+        </div>
       `;
       setTimeout(observeReveal, 30);
     }
@@ -9050,28 +9660,313 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       const app = document.getElementById("app");
       const def = getAllSeries()[idx];
       if (!def) { app.innerHTML = '<div class="loading">专题不存在</div>'; return; }
-
+      const isBichu = def.name.includes("笔触校园");
       const posts = def.posts.slice().sort((a, b) => a.date < b.date ? 1 : -1);
+
+      const postCards = posts.map((post, i) => `
+        <div class="post-card reveal" style="transition-delay:${Math.min(i * 0.04, 0.3)}s;cursor:pointer;" onclick="navigate('post','${post.slug}')">
+          <div class="post-meta">
+            <time>${formatDate(post.date)}</time>
+            <span>·</span>
+            ${post.tags.slice(0,2).map(t => `<span>#${t}</span>`).join(' ')}
+          </div>
+          <h3>${post.title}</h3>
+          ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
+          <p class="excerpt">${displayExcerpt(post)}</p>
+        </div>
+      `).join("");
+
+      if (isBichu) {
+        // 笔触校园：点进专题即展示地图展示页（上方），其下衔接华农文章
+        document.body.classList.add("series-detail-bichu");
+        app.innerHTML = `
+          <div class="post-detail page-enter">
+            <span class="back-link" onclick="goBack()">← 返回专题</span>
+            <div id="bichu-embed-host"></div>
+            <div class="series-detail-posts">${postCards}</div>
+          </div>
+        `;
+        buildBichu(document.getElementById("bichu-embed-host"), { full: false });
+        setTimeout(observeReveal, 30);
+        return;
+      }
 
       app.innerHTML = `
         <div class="post-detail page-enter">
           <span class="back-link" onclick="goBack()">← 返回专题</span>
           <h1 style="margin-bottom:8px;">${def.name}</h1>
-          <div class="post-meta" style="margin-bottom:40px;">
+          <div class="post-meta" style="margin-bottom:24px;">
             <span style="color:var(--fg-muted);font-size:14px;">${def.desc}，共 ${posts.length} 篇</span>
           </div>
-          ${posts.map((post, i) => `
-            <div class="post-card reveal" style="transition-delay:${Math.min(i * 0.04, 0.3)}s;cursor:pointer;" onclick="navigate('post','${post.slug}')">
-              <div class="post-meta">
-                <time>${formatDate(post.date)}</time>
-                <span>·</span>
-                ${post.tags.slice(0,2).map(t => `<span>#${t}</span>`).join(' ')}
-              </div>
-              <h3>${post.title}</h3>
-              ${getImageCount(post.content) > 0 ? `<div class="img-badge">含 ${getImageCount(post.content)} 张图片</div>` : ""}
-            <p class="excerpt">${displayExcerpt(post)}</p>
+          <div class="series-detail-posts">${postCards}</div>
+        </div>
+      `;
+      setTimeout(observeReveal, 30);
+    }
+
+    // ===== 笔触校园 · 校园记忆地图（官方手绘地图底图） =====
+    // ===== 笔触校园 · 校园记忆地图（官方手绘地图底图） =====
+    let bichuTourTimer = null;
+    let bichuTourRunning = false;
+
+    function hideBichuCard() {
+      const card = document.getElementById("bichu-float-card");
+      if (card) card.classList.remove("show");
+      const wrap = document.getElementById("bichu-map-wrap");
+      if (wrap) wrap.classList.remove("dimmed");
+      document.querySelectorAll(".bichu-node.active").forEach(n => n.classList.remove("active"));
+    }
+
+    function stopBichuTour() {
+      bichuTourRunning = false;
+      if (bichuTourTimer) { clearTimeout(bichuTourTimer); bichuTourTimer = null; }
+      const btn = document.getElementById("bichu-tour-btn");
+      if (btn) { btn.classList.remove("active"); btn.innerHTML = "▶ 自动导览"; }
+      const wrap = document.getElementById("bichu-map-wrap");
+      const inner = wrap && wrap.querySelector(".bichu-map-inner");
+      if (inner) { inner.style.transform = ""; inner.classList.remove("is-tour"); }
+      hideBichuCard();
+    }
+
+    function renderBichu() {
+      const app = document.getElementById("app");
+      document.body.classList.add("bichu-page");
+      buildBichu(app, { full: true });
+    }
+
+    // 可复用的校园地图构建器：full=整页（带返回），embedded=嵌入其它页面（如专题）
+    function buildBichu(host, opts = {}) {
+      const full = !!opts.full;
+      stopBichuTour();
+      const W = 1600, H = 715;
+      const pts = CAMPUS_MAP.map(m => `${m.x},${m.y}`).join(" ");
+      const markers = CAMPUS_MAP.map((m, i) => `
+        <g class="bichu-node" data-i="${i}" tabindex="0" role="button" aria-label="${m.name}" style="animation-delay:${0.35 + i * 0.07}s">
+          <circle class="bichu-pulse" cx="${m.x}" cy="${m.y}" r="13"></circle>
+          <circle class="bichu-dot bichu-interactor" cx="${m.x}" cy="${m.y}" r="12"></circle>
+          <circle class="bichu-core" cx="${m.x}" cy="${m.y}" r="5"></circle>
+          <text class="bichu-num" x="${m.x}" y="${m.y + 4}" text-anchor="middle">${i + 1}</text>
+          <text class="bichu-label" x="${m.x}" y="${m.y - 24}" text-anchor="middle">${m.name}</text>
+        </g>
+      `).join("");
+
+      host.innerHTML = `
+        <div class="bichu-wrap page-enter">
+          ${full ? `<span class="back-link" onclick="goBack()">← 返回专题</span>` : ""}
+          <header class="bichu-head">
+            <h1>笔触校园 · 校园记忆地图</h1>
+            <p>华农官方手绘地图为底，二十一处采风地标按真实校园位置标注。点击光点，卡片会在地图旁浮现。</p>
+            <div class="bichu-controls">
+              <button id="bichu-tour-btn" class="bichu-tour-btn" onclick="toggleBichuTour()">▶ 自动导览</button>
             </div>
-          `).join("")}
+          </header>
+          <div class="bichu-stage">
+            <div class="bichu-map-wrap" id="bichu-map-wrap">
+              <div class="bichu-map-inner" id="bichu-map-inner">
+                <img class="bichu-map-img" src="campus-map.jpg" alt="华南农业大学手绘校园地图" loading="lazy">
+                <svg class="bichu-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="校园记忆地图">
+                  <defs>
+                    <radialGradient id="bichuGlow" cx="50%" cy="50%" r="50%">
+                      <stop class="bichu-glow-a" offset="0%"/>
+                      <stop class="bichu-glow-b" offset="100%"/>
+                    </radialGradient>
+                  </defs>
+                  <polyline class="bichu-route" id="bichu-route" points="${pts}" fill="none"/>
+                  ${markers}
+                </svg>
+              </div>
+              <div class="bichu-float-card" id="bichu-float-card" aria-live="polite">
+                <button class="bichu-card-close" aria-label="关闭" onclick="hideBichuCard()">×</button>
+                <div class="bichu-card-body" id="bichu-card-body">
+                  <div class="bichu-card-empty">点击地图上的光点，看看那一天的笔触。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const wrap = host.querySelector("#bichu-map-wrap");
+      const inner = host.querySelector("#bichu-map-inner");
+      const card = host.querySelector("#bichu-float-card");
+      const cardBody = host.querySelector("#bichu-card-body");
+      let activeIndex = -1;
+
+      const placeCardAt = (cx, cy) => {
+        if (!wrap || !card) return;
+        const wrapRect = wrap.getBoundingClientRect();
+        if (wrapRect.width <= 760) { card.style.left = ""; card.style.top = ""; return; }
+        const cardW = Math.min(320, wrapRect.width - 32);
+        const cardH = card.offsetHeight || 220;
+        let left = cx < wrapRect.width / 2 ? cx + 18 : cx - cardW - 18;
+        let top = cy - cardH / 2;
+        left = Math.max(12, Math.min(left, wrapRect.width - cardW - 12));
+        top = Math.max(12, Math.min(top, wrapRect.height - cardH - 12));
+        card.style.left = left + "px";
+        card.style.top = top + "px";
+        card.style.maxWidth = cardW + "px";
+      };
+      const positionCard = (node) => {
+        if (!node || !wrap || !card) return;
+        const wrapRect = wrap.getBoundingClientRect();
+        if (wrapRect.width <= 760) { card.style.left = ""; card.style.top = ""; return; }
+        const nodeRect = node.getBoundingClientRect();
+        placeCardAt(nodeRect.left + nodeRect.width / 2 - wrapRect.left, nodeRect.top + nodeRect.height / 2 - wrapRect.top);
+      };
+
+      const moveToPoint = (i, scale = 2.0) => {
+        if (!inner || !wrap) return null;
+        const m = CAMPUS_MAP[i];
+        inner.classList.add("is-tour");
+        const IW = wrap.clientWidth, IH = wrap.clientHeight;
+        const ratio = IW / W;                       // 每个 viewBox 单位对应的实际像素
+        const px = m.x * ratio, py = m.y * ratio;
+        let tx = IW / 2 - scale * px;
+        let ty = IH / 2 - scale * py;
+        // 约束平移，放大后地图始终铺满视口、不露底
+        tx = Math.max(IW * (1 - scale), Math.min(0, tx));
+        ty = Math.max(IH * (1 - scale), Math.min(0, ty));
+        inner.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+        return { cx: tx + scale * px, cy: ty + scale * py };   // 缩放后该点的视觉中心（wrap 坐标系）
+      };
+
+      const resetView = () => {
+        if (!inner) return;
+        inner.style.transform = "";
+        inner.classList.remove("is-tour");
+      };
+
+      const show = (i, { tour = false } = {}) => {
+        const m = CAMPUS_MAP[i];
+        if (!m) return;
+        activeIndex = i;
+        host.querySelectorAll(".bichu-node").forEach(n => n.classList.remove("active"));
+        const node = host.querySelector(`.bichu-node[data-i="${i}"]`);
+        if (node) node.classList.add("active");
+        if (tour) { if (wrap) wrap.classList.remove("dimmed"); moveToPoint(i, 2.1); }
+        else { if (wrap) wrap.classList.add("dimmed"); resetView(); }
+        cardBody.innerHTML = `
+          <div class="bichu-card-no">${m.no}</div>
+          <h2 class="bichu-card-title">${m.name}</h2>
+          <p class="bichu-card-quote">“${m.quote}”</p>
+          <button class="bichu-card-btn" onclick="navigate('post','${m.slug}')">读这一篇 →</button>
+        `;
+        card.classList.add("show");
+        requestAnimationFrame(() => requestAnimationFrame(() => positionCard(node)));
+      };
+
+      host.querySelectorAll(".bichu-node").forEach(node => {
+        node.addEventListener("click", (e) => { e.stopPropagation(); stopBichuTour(); show(+node.dataset.i); });
+        node.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); stopBichuTour(); show(+node.dataset.i); } });
+      });
+
+      wrap.addEventListener("click", (e) => {
+        if (!e.target.closest(".bichu-node") && !e.target.closest(".bichu-float-card")) {
+          hideBichuCard();
+          stopBichuTour();
+        }
+      });
+
+      if (!window._bichuKeyBound) {
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") { hideBichuCard(); stopBichuTour(); }
+        });
+        window._bichuKeyBound = true;
+      }
+
+      // 路线「画出来」的动效
+      requestAnimationFrame(() => {
+        const route = host.querySelector("#bichu-route");
+        if (route && route.getTotalLength) {
+          const len = route.getTotalLength();
+          route.style.strokeDasharray = len;
+          route.style.strokeDashoffset = len;
+          route.style.animation = "bichuRouteDraw 2.6s cubic-bezier(.2,.8,.2,1) forwards";
+        }
+      });
+
+      // 自动导览挂载到全局供按钮调用
+      window._bichuShow = show;
+
+      setTimeout(observeReveal, 30);
+    }
+
+    function toggleBichuTour() {
+      const btn = document.getElementById("bichu-tour-btn");
+      if (bichuTourRunning) { stopBichuTour(); return; }
+      if (!window._bichuShow || !CAMPUS_MAP.length) return;
+      bichuTourRunning = true;
+      if (btn) { btn.classList.add("active"); btn.innerHTML = "⏸ 停止导览"; }
+      let i = 0;
+      const step = () => {
+        if (!bichuTourRunning) return;
+        window._bichuShow(i, { tour: true });
+        bichuTourTimer = setTimeout(() => {
+          if (!bichuTourRunning) return;
+          i += 1;
+          if (i >= CAMPUS_MAP.length) {
+            bichuTourTimer = setTimeout(() => { stopBichuTour(); }, 1800);
+          } else {
+            step();
+          }
+        }, 3200);
+      };
+      step();
+    }
+
+    // ===== 精选 · 展览 =====
+    // 策展人手选代表作（slug + 展览用短标题）。可随时增减、替换。
+    const FEATURED_POSTS = [
+      { slug: "article-b0c3a5872954", label: "落雨" },
+      { slug: "article-fe493f3c1f3f", label: "记忆与印象" },
+      { slug: "article-19068df4f429", label: "宁荫湖" },
+      { slug: "article-5e064f2f61e5", label: "呼号" },
+      { slug: "article-b6fc0cf3dec3", label: "灰尘中的叹息" },
+      { slug: "article-aaf30958ee01", label: "《布鲁克林有棵树》书评" },
+      { slug: "article-bafdd9622069", label: "梦想家" },
+      { slug: "article-8f08ad3ebe2c", label: "乡下小记" },
+      { slug: "article-0370540c63b0", label: "游园记" },
+    ];
+
+    // 精选集贯通：把「精选·展览」页与首页「★ 精选集」统一为同一数据源 post.pinned。
+    // 首次启动把写死的策展列表播种进 pinned + featuredLabel，使展览页初始内容不变；
+    // 之后完全由编辑器「设为精选」复选框管理（单一数据源，互相同步）。
+    function seedFeaturedCollection() {
+      try {
+        if (localStorage.getItem("zhuyan-featured-seeded")) return;
+        FEATURED_POSTS.forEach(f => {
+          const p = POSTS.find(x => x.slug === f.slug);
+          if (p) { if (!p.pinned) p.pinned = true; if (!p.featuredLabel) p.featuredLabel = f.label; }
+        });
+        localStorage.setItem("zhuyan-featured-seeded", "1");
+      } catch (e) {}
+    }
+
+    function renderFeatured() {
+      const app = document.getElementById("app");
+      const posts = getAllPosts()
+        .filter(p => p.pinned)
+        .sort((a, b) => a.date < b.date ? 1 : -1)
+        .map(p => ({ ...p, _label: p.featuredLabel || p.title }));
+
+      app.innerHTML = `
+        <div class="feat-wrap page-enter">
+          <header class="feat-head">
+            <h1>精选 · 展览</h1>
+            <p class="feat-intro">这里收着我最愿意被看见的篇目。它们未必最完美，却最能代表我某一刻的笔触与心意——像墙上挂着的画，等你走近。</p>
+          </header>
+          <div class="feat-grid">
+            ${posts.length ? posts.map((p, i) => `
+              <article class="feat-card reveal" style="transition-delay:${Math.min(i * 0.05, 0.4)}s;cursor:pointer;" onclick="navigate('post','${p.slug}')">
+                <div class="feat-plate">${String(i + 1).padStart(2, "0")}</div>
+                <div class="feat-meta"><time>${formatDate(p.date)}</time><span>·</span><span>${p.category}</span></div>
+                <h2 class="feat-title">${p._label}</h2>
+                <p class="feat-quote">${displayExcerpt(p).slice(0, 72)}${displayExcerpt(p).length > 72 ? "…" : ""}</p>
+                <span class="feat-more">展阅 →</span>
+              </article>
+            `).join("") : ""}
+          </div>
+          ${posts.length ? "" : `<p class="excerpt-hint" style="margin-top:18px;">精选集还是空的。去文章编辑器勾选「设为精选」，它就会出现在展览里。</p>`}
         </div>
       `;
       setTimeout(observeReveal, 30);
@@ -9413,7 +10308,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           </div>
         </div>
 
-        <div class="value-prop">把真实的写作、稳定的审美与可用的技术，交给需要它们的人。</div>
+        <div class="value-prop">欢迎您来 看看写作</div>
 
         <!-- 数字名片 / 联系方式 -->
         <div class="contact-section">
@@ -9882,15 +10777,24 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
             });
           }
         } else if (mode === "fog") {
-          // 雾：几团大而柔的光斑缓慢横向漂移
-          const n = 7;
-          for (let i = 0; i < n; i++) {
-            particles.push({
-              x: Math.random() * W, y: H * (0.32 + Math.random() * 0.6),
-              r: 180 + Math.random() * 220,
-              vx: (0.2 + Math.random() * 0.5) * (Math.random() < 0.5 ? -1 : 1),
-              o: 0.10 + Math.random() * 0.10
-            });
+          // 雾：多层弥漫雾团，分前中后三层，缓慢横向漂移 + 微垂直起伏
+          const layers = [
+            { n: 5, rMin: 220, rMax: 320, yMin: 0.20, yMax: 0.55, oMin: 0.06, oMax: 0.12, vMul: 0.4 }, // 远景：大而淡
+            { n: 6, rMin: 160, rMax: 240, yMin: 0.30, yMax: 0.75, oMin: 0.10, oMax: 0.20, vMul: 0.7 }, // 中景
+            { n: 5, rMin: 100, rMax: 170, yMin: 0.45, yMax: 0.90, oMin: 0.14, oMax: 0.28, vMul: 1.0 }  // 近景：小而实
+          ];
+          for (const L of layers) {
+            for (let i = 0; i < L.n; i++) {
+              particles.push({
+                x: Math.random() * W,
+                y: H * (L.yMin + Math.random() * (L.yMax - L.yMin)),
+                r: L.rMin + Math.random() * (L.rMax - L.rMin),
+                vx: (0.15 + Math.random() * 0.35) * L.vMul * (Math.random() < 0.5 ? -1 : 1),
+                vy: (Math.random() - 0.5) * 0.08,  // 微垂直起伏
+                phase: Math.random() * Math.PI * 2,
+                o: L.oMin + Math.random() * (L.oMax - L.oMin)
+              });
+            }
           }
         } else if (mode === "stars") {
           const n = Math.floor((W * H) / 5500);
@@ -10071,40 +10975,112 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         ctx.closePath();
       }
       function makeCumulus(W, H, i, n) {
-        // 几何简约云：3 个等径圆 + 一条扁平圆角底座，纯色填充 + 细描边，无渐变、无软阴影
+        // 超写实积云：多层渐变气泡叠加（metaball），零描边、体积感、软边缘
         const baseY = H * (0.04 + 0.12 * (n > 1 ? i / (n - 1) : 0.4));
-        const R = 28 + Math.floor(Math.random() * 10);
-        const circles = [
-          { dx: -R * 1.18, dy: 0,        r: R * 0.82 },
-          { dx: 0,        dy: -R * 0.42, r: R },
-          { dx: R * 1.18, dy: 0,        r: R * 0.82 }
-        ];
+        const cloudW = 160 + Math.random() * 240;
+        const cloudH = 55 + Math.random() * 110;
+        // 主体气泡（11–18 个，中心密集、边缘稀疏）
+        const mainCount = 11 + Math.floor(Math.random() * 8);
+        const bubbles = [];
+        for (let j = 0; j < mainCount; j++) {
+          const t = j / (mainCount - 1);
+          const spreadFactor = 1 - Math.abs(t - 0.5) * 1.7;
+          bubbles.push({
+            dx: (Math.random() - 0.5) * cloudW * (0.48 + spreadFactor * 0.52),
+            dy: -cloudH * (0.06 + Math.random() * 0.78),
+            r: 14 + Math.random() * cloudH * 0.42,
+            alpha: 0.52 + Math.random() * 0.48
+          });
+        }
+        // 顶部蓬松小泡（4–8 个）
+        for (let j = 0; j < 4 + Math.floor(Math.random() * 5); j++) {
+          bubbles.push({
+            dx: (Math.random() - 0.5) * cloudW * 0.78,
+            dy: -cloudH * (0.58 + Math.random() * 0.42),
+            r: 7 + Math.random() * 30,
+            alpha: 0.3 + Math.random() * 0.38
+          });
+        }
+        // 底部小泡（3–6 个，打破平底感）
+        for (let j = 0; j < 3 + Math.floor(Math.random() * 4); j++) {
+          bubbles.push({
+            dx: (Math.random() - 0.5) * cloudW * 0.68,
+            dy: -cloudH * (0 + Math.random() * 0.16),
+            r: 9 + Math.random() * 20,
+            alpha: 0.28 + Math.random() * 0.32
+          });
+        }
         return {
           x: W * (0.12 + 0.76 * (n > 1 ? i / (n - 1) : Math.random())),
           y: baseY,
-          scale: 0.6 + Math.random() * 0.35,
-          speed: 5 + Math.random() * 7,
-          circles,
-          baseW: R * 3.2, baseH: R * 0.66, R,
-          alpha: 0.6 + Math.random() * 0.16
+          scale: 0.62 + Math.random() * 0.32,
+          speed: 3 + Math.random() * 5,
+          bubbles, cloudW, cloudH,
+          alpha: 0.86 + Math.random() * 0.14
         };
       }
       function drawCumulus(c, time, sy) {
         const dark = isDark();
-        const fill = dark ? `rgba(122,142,172,${c.alpha * 0.45})` : `rgba(243,247,251,${c.alpha})`;
-        const stroke = dark ? `rgba(150,170,200,${c.alpha * 0.7})` : `rgba(176,192,214,${c.alpha})`;
         ctx.save();
         ctx.translate(c.x, sy);
         ctx.scale(c.scale, c.scale);
-        ctx.lineWidth = 1.4;
-        ctx.strokeStyle = stroke;
-        ctx.fillStyle = fill;
-        // 扁平圆角底座
-        geomRoundRect(-c.baseW / 2, -c.R * 0.12, c.baseW, c.baseH, c.baseH / 2);
-        ctx.fill(); ctx.stroke();
-        // 三个等径圆，构成几何云形
-        for (const p of c.circles) {
-          ctx.beginPath(); ctx.arc(p.dx, p.dy, p.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        // 按 dy 从底到顶排序，保证遮挡正确
+        const sorted = [...c.bubbles].sort((a, b) => a.dy - b.dy);
+        // === 第 1 层：底部阴影（模拟天空光从上方来，云底暗面） ===
+        for (const b of sorted) {
+          if (b.dy > -c.cloudH * 0.28) {
+            const sR = b.r * 1.38;
+            const grad = ctx.createRadialGradient(b.dx, b.dy + b.r * 0.28, b.r * 0.25, b.dx, b.dy, sR);
+            if (dark) {
+              grad.addColorStop(0, `rgba(92,100,118,${b.alpha * c.alpha * 0.58})`);
+              grad.addColorStop(0.5, `rgba(92,100,118,${b.alpha * c.alpha * 0.18})`);
+              grad.addColorStop(1, "rgba(92,100,118,0)");
+            } else {
+              grad.addColorStop(0, `rgba(168,175,188,${b.alpha * c.alpha * 0.50})`);
+              grad.addColorStop(0.5, `rgba(168,175,188,${b.alpha * c.alpha * 0.14})`);
+              grad.addColorStop(1, "rgba(168,175,188,0)");
+            }
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(b.dx, b.dy, sR, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        // === 第 2 层：云体主体（暖白→冷灰微过渡） ===
+        for (const b of sorted) {
+          const grad = ctx.createRadialGradient(
+            b.dx - b.r * 0.12, b.dy - b.r * 0.2, b.r * 0.06,
+            b.dx, b.dy, b.r
+          );
+          if (dark) {
+            grad.addColorStop(0, `rgba(212,220,238,${b.alpha * c.alpha * 0.74})`);
+            grad.addColorStop(0.52, `rgba(178,190,214,${b.alpha * c.alpha * 0.52})`);
+            grad.addColorStop(1, "rgba(142,156,188,0)");
+          } else {
+            grad.addColorStop(0, `rgba(255,254,251,${b.alpha * c.alpha})`);
+            grad.addColorStop(0.42, `rgba(251,249,244,${b.alpha * c.alpha * 0.80})`);
+            grad.addColorStop(0.82, `rgba(238,234,226,${b.alpha * c.alpha * 0.32})`);
+            grad.addColorStop(1, "rgba(226,222,214,0)");
+          }
+          ctx.fillStyle = grad;
+          ctx.beginPath(); ctx.arc(b.dx, b.dy, b.r, 0, Math.PI * 2); ctx.fill();
+        }
+        // === 第 3 层：顶部高光（模拟阳光直射面，更亮更暖） ===
+        for (const b of sorted) {
+          if (b.dy < -c.cloudH * 0.20) {
+            const hlR = b.r * 0.75;
+            const hlGrad = ctx.createRadialGradient(
+              b.dx, b.dy - b.r * 0.38, b.r * 0.04,
+              b.dx, b.dy, hlR
+            );
+            if (dark) {
+              hlGrad.addColorStop(0, `rgba(232,236,252,${b.alpha * c.alpha * 0.42})`);
+              hlGrad.addColorStop(1, "rgba(232,236,252,0)");
+            } else {
+              hlGrad.addColorStop(0, `rgba(255,255,254,${b.alpha * c.alpha * 0.68})`);
+              hlGrad.addColorStop(1, "rgba(255,255,254,0)");
+            }
+            ctx.fillStyle = hlGrad;
+            ctx.beginPath(); ctx.arc(b.dx, b.dy, hlR, 0, Math.PI * 2); ctx.fill();
+          }
         }
         ctx.restore();
       }
@@ -10147,15 +11123,21 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           }
           ctx.globalAlpha = 1;
         } else if (mode === "fog") {
+          // 雾：灰蓝色调弥漫光斑（白天偏冷灰蓝，夜间偏深蓝灰）
+          const col = isDark() ? "175,190,215" : "200,212,228";
           for (const f of particles) {
             f.x += f.vx;
-            if (f.x > W + f.r) f.x = -f.r; else if (f.x < -f.r) f.x = W + f.r;
-            const col = isDark() ? "205,215,235" : "255,255,255";
-            const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+            f.phase += 0.003;
+            const yOff = Math.sin(f.phase) * 8;  // 缓慢垂直起伏
+            if (f.x > W + f.r) f.x = -f.r;
+            else if (f.x < -f.r) f.x = W + f.r;
+            const fy = f.y + yOff;
+            const g = ctx.createRadialGradient(f.x, fy, 0, f.x, fy, f.r);
             g.addColorStop(0, `rgba(${col},${f.o})`);
+            g.addColorStop(0.5, `rgba(${col},${f.o * 0.5})`);
             g.addColorStop(1, `rgba(${col},0)`);
             ctx.fillStyle = g;
-            ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(f.x, fy, f.r, 0, Math.PI * 2); ctx.fill();
           }
         } else if (mode === "stars") {
           for (const s of particles) {
@@ -10196,9 +11178,10 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
           const scrollY = window.scrollY || window.pageYOffset || 0;
           for (const c of scene.clouds) {
             c.x += c.speed * dt;
-            if (c.x - 320 * c.scale > W) c.x = -320 * c.scale;
-            const sy = c.y - scrollY;                 // 锚定页面顶端，下滚随页面滚走
-            if (sy + 320 * c.scale < 0 || sy - 320 * c.scale > H) continue;
+            const cw = (c.cloudW || 320) * c.scale;
+            if (c.x - cw > W) c.x = -cw;
+            const sy = c.y - scrollY;
+            if (sy + cw < 0 || sy - cw > H) continue;
             drawCumulus(c, time, sy);
           }
           ctx.globalAlpha = 1;
@@ -10346,6 +11329,7 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
         }
         incrementTraffic();
         updateAdminUI();
+        seedFeaturedCollection();
         handleRoute();
         initFloatingQuotes();
         renderNavQuote();
@@ -10399,5 +11383,91 @@ Hello，陌生人，你可曾有过这样的时刻——独自在外时，歌单
       }
     });
   </script>
+<script>/*Lenis 平滑滚动 (内联, 来源 npm lenis@1.3.25) */
+(function(){var e=`1.3.25`;function t(e,t,n){return Math.max(e,Math.min(t,n))}function n(e,t,n){return(1-n)*e+n*t}function r(e,t,r,i){return n(e,t,1-Math.exp(-r*i))}function i(e,t){return(e%t+t)%t}var a=class{isRunning=!1;value=0;from=0;to=0;currentTime=0;lerp;duration;easing;onUpdate;advance(e){if(!this.isRunning)return;let n=!1;if(this.duration&&this.easing){this.currentTime+=e;let r=t(0,this.currentTime/this.duration,1);n=r>=1;let i=n?1:this.easing(r);this.value=this.from+(this.to-this.from)*i}else this.lerp?(this.value=r(this.value,this.to,this.lerp*60,e),Math.round(this.value)===Math.round(this.to)&&(this.value=this.to,n=!0)):(this.value=this.to,n=!0);n&&this.stop(),this.onUpdate?.(this.value,n)}stop(){this.isRunning=!1}fromTo(e,t,{lerp:n,duration:r,easing:i,onStart:a,onUpdate:o}){this.from=this.value=e,this.to=t,this.lerp=n,this.duration=r,this.easing=i,this.currentTime=0,this.isRunning=!0,a?.(),this.onUpdate=o}};function o(e,t){let n;return function(...r){clearTimeout(n),n=setTimeout(()=>{n=void 0,e.apply(this,r)},t)}}var s=class{width=0;height=0;scrollHeight=0;scrollWidth=0;debouncedResize;wrapperResizeObserver;contentResizeObserver;constructor(e,t,{autoResize:n=!0,debounce:r=250}={}){this.wrapper=e,this.content=t,n&&(this.debouncedResize=o(this.resize,r),this.wrapper instanceof Window?window.addEventListener(`resize`,this.debouncedResize):(this.wrapperResizeObserver=new ResizeObserver(this.debouncedResize),this.wrapperResizeObserver.observe(this.wrapper)),this.contentResizeObserver=new ResizeObserver(this.debouncedResize),this.contentResizeObserver.observe(this.content)),this.resize()}destroy(){this.wrapperResizeObserver?.disconnect(),this.contentResizeObserver?.disconnect(),this.wrapper===window&&this.debouncedResize&&window.removeEventListener(`resize`,this.debouncedResize)}resize=()=>{this.onWrapperResize(),this.onContentResize()};onWrapperResize=()=>{this.wrapper instanceof Window?(this.width=window.innerWidth,this.height=window.innerHeight):(this.width=this.wrapper.clientWidth,this.height=this.wrapper.clientHeight)};onContentResize=()=>{this.wrapper instanceof Window?(this.scrollHeight=this.content.scrollHeight,this.scrollWidth=this.content.scrollWidth):(this.scrollHeight=this.wrapper.scrollHeight,this.scrollWidth=this.wrapper.scrollWidth)};get limit(){return{x:this.scrollWidth-this.width,y:this.scrollHeight-this.height}}},c=class{events={};emit(e,...t){let n=this.events[e]||[];for(let e=0,r=n.length;e<r;e++)n[e]?.(...t)}on(e,t){return this.events[e]?this.events[e].push(t):this.events[e]=[t],()=>{this.events[e]=this.events[e]?.filter(e=>t!==e)}}off(e,t){this.events[e]=this.events[e]?.filter(e=>t!==e)}destroy(){this.events={}}};let l={passive:!1};function u(e,t){return e===1?16.666666666666668:e===2?t:1}var d=class{touchStart={x:0,y:0};lastDelta={x:0,y:0};window={width:0,height:0};emitter=new c;constructor(e,t={wheelMultiplier:1,touchMultiplier:1}){this.element=e,this.options=t,window.addEventListener(`resize`,this.onWindowResize),this.onWindowResize(),this.element.addEventListener(`wheel`,this.onWheel,l),this.element.addEventListener(`touchstart`,this.onTouchStart,l),this.element.addEventListener(`touchmove`,this.onTouchMove,l),this.element.addEventListener(`touchend`,this.onTouchEnd,l)}on(e,t){return this.emitter.on(e,t)}destroy(){this.emitter.destroy(),window.removeEventListener(`resize`,this.onWindowResize),this.element.removeEventListener(`wheel`,this.onWheel,l),this.element.removeEventListener(`touchstart`,this.onTouchStart,l),this.element.removeEventListener(`touchmove`,this.onTouchMove,l),this.element.removeEventListener(`touchend`,this.onTouchEnd,l)}onTouchStart=e=>{let{clientX:t,clientY:n}=e.targetTouches?e.targetTouches[0]:e;this.touchStart.x=t,this.touchStart.y=n,this.lastDelta={x:0,y:0},this.emitter.emit(`scroll`,{deltaX:0,deltaY:0,event:e})};onTouchMove=e=>{let{clientX:t,clientY:n}=e.targetTouches?e.targetTouches[0]:e,r=-(t-this.touchStart.x)*this.options.touchMultiplier,i=-(n-this.touchStart.y)*this.options.touchMultiplier;this.touchStart.x=t,this.touchStart.y=n,this.lastDelta={x:r,y:i},this.emitter.emit(`scroll`,{deltaX:r,deltaY:i,event:e})};onTouchEnd=e=>{this.emitter.emit(`scroll`,{deltaX:this.lastDelta.x,deltaY:this.lastDelta.y,event:e})};onWheel=e=>{let{deltaX:t,deltaY:n,deltaMode:r}=e,i=u(r,this.window.width),a=u(r,this.window.height);t*=i,n*=a,t*=this.options.wheelMultiplier,n*=this.options.wheelMultiplier,this.emitter.emit(`scroll`,{deltaX:t,deltaY:n,event:e})};onWindowResize=()=>{this.window={width:window.innerWidth,height:window.innerHeight}}};let f=e=>Math.min(1,1.001-2**(-10*e));var p=class{_isScrolling=!1;_isStopped=!1;_isLocked=!1;_preventNextNativeScrollEvent=!1;_resetVelocityTimeout=null;_rafId=null;_isDraggingSelection=!1;isTouching;isIos;time=0;userData={};lastVelocity=0;velocity=0;direction=0;options;targetScroll;animatedScroll;animate=new a;emitter=new c;dimensions;virtualScroll;constructor({wrapper:t=window,content:n=document.documentElement,eventsTarget:r=t,smoothWheel:i=!0,syncTouch:a=!1,syncTouchLerp:o=.075,touchInertiaExponent:c=1.7,duration:l,easing:u,lerp:p=.1,infinite:m=!1,orientation:h=`vertical`,gestureOrientation:g=h===`horizontal`?`both`:`vertical`,touchMultiplier:_=1,wheelMultiplier:v=1,autoResize:y=!0,prevent:b,virtualScroll:x,overscroll:S=!0,autoRaf:C=!1,anchors:w=!1,autoToggle:T=!1,allowNestedScroll:E=!1,__experimental__naiveDimensions:D=!1,naiveDimensions:O=D,stopInertiaOnNavigate:k=!1}={}){window.lenisVersion=e,window.lenis||(window.lenis={}),window.lenis.version=e,h===`horizontal`&&(window.lenis.horizontal=!0),a===!0&&(window.lenis.touch=!0),this.isIos=/(iPad|iPhone|iPod)/g.test(navigator.userAgent),(!t||t===document.documentElement)&&(t=window),typeof l==`number`&&typeof u!=`function`?u=f:typeof u==`function`&&typeof l!=`number`&&(l=1),this.options={wrapper:t,content:n,eventsTarget:r,smoothWheel:i,syncTouch:a,syncTouchLerp:o,touchInertiaExponent:c,duration:l,easing:u,lerp:p,infinite:m,gestureOrientation:g,orientation:h,touchMultiplier:_,wheelMultiplier:v,autoResize:y,prevent:b,virtualScroll:x,overscroll:S,autoRaf:C,anchors:w,autoToggle:T,allowNestedScroll:E,naiveDimensions:O,stopInertiaOnNavigate:k},this.dimensions=new s(t,n,{autoResize:y}),this.updateClassName(),this.targetScroll=this.animatedScroll=this.actualScroll,this.options.wrapper.addEventListener(`scroll`,this.onNativeScroll),this.options.wrapper.addEventListener(`scrollend`,this.onScrollEnd,{capture:!0}),(this.options.anchors||this.options.stopInertiaOnNavigate)&&this.options.wrapper.addEventListener(`click`,this.onClick),this.options.wrapper.addEventListener(`pointerdown`,this.onPointerDown),this.virtualScroll=new d(r,{touchMultiplier:_,wheelMultiplier:v}),this.virtualScroll.on(`scroll`,this.onVirtualScroll),this.options.autoToggle&&(this.checkOverflow(),this.rootElement.addEventListener(`transitionend`,this.onTransitionEnd)),this.options.autoRaf&&(this._rafId=requestAnimationFrame(this.raf))}destroy(){this.emitter.destroy(),this.options.wrapper.removeEventListener(`scroll`,this.onNativeScroll),this.options.wrapper.removeEventListener(`scrollend`,this.onScrollEnd,{capture:!0}),this.options.wrapper.removeEventListener(`pointerdown`,this.onPointerDown),(this.options.anchors||this.options.stopInertiaOnNavigate)&&this.options.wrapper.removeEventListener(`click`,this.onClick),this.virtualScroll.destroy(),this.dimensions.destroy(),this.cleanUpClassName(),this._rafId&&cancelAnimationFrame(this._rafId)}on(e,t){return this.emitter.on(e,t)}off(e,t){return this.emitter.off(e,t)}onScrollEnd=e=>{e instanceof CustomEvent||(this.isScrolling===`smooth`||this.isScrolling===!1)&&e.stopPropagation()};dispatchScrollendEvent=()=>{this.options.wrapper.dispatchEvent(new CustomEvent(`scrollend`,{bubbles:this.options.wrapper===window,detail:{lenisScrollEnd:!0}}))};get overflow(){let e=this.isHorizontal?`overflow-x`:`overflow-y`;return getComputedStyle(this.rootElement)[e]}checkOverflow(){[`hidden`,`clip`].includes(this.overflow)?this.internalStop():this.internalStart()}onTransitionEnd=e=>{e.propertyName?.includes(`overflow`)&&e.target===this.rootElement&&this.checkOverflow()};setScroll(e){this.isHorizontal?this.options.wrapper.scrollTo({left:e,behavior:`instant`}):this.options.wrapper.scrollTo({top:e,behavior:`instant`})}onClick=e=>{let t=e.composedPath().filter(e=>e instanceof HTMLAnchorElement&&e.href).map(e=>new URL(e.href)),n=new URL(window.location.href);if(this.options.anchors){let e=t.find(e=>n.host===e.host&&n.pathname===e.pathname&&e.hash);if(e){let t=typeof this.options.anchors==`object`&&this.options.anchors?this.options.anchors:void 0,n=decodeURIComponent(e.hash);this.scrollTo(n,t);return}}if(this.options.stopInertiaOnNavigate&&t.some(e=>n.host===e.host&&n.pathname!==e.pathname)){this.reset();return}};onPointerDown=e=>{e.button===1&&this.reset()};isTouchOnSelectionHandle(e){let t=window.getSelection();if(!t||t.isCollapsed||t.rangeCount===0)return!1;let n=e.targetTouches[0]??e.changedTouches[0];if(!n)return!1;let r=t.getRangeAt(0).getClientRects();if(r.length===0)return!1;let i=r[0],a=r[r.length-1],o=Math.hypot(n.clientX-i.left,n.clientY-i.top)<=40,s=Math.hypot(n.clientX-a.right,n.clientY-a.bottom)<=40;return o||s}onVirtualScroll=e=>{if(typeof this.options.virtualScroll==`function`&&this.options.virtualScroll(e)===!1)return;let{deltaX:t,deltaY:n,event:r}=e;if(this.emitter.emit(`virtual-scroll`,{deltaX:t,deltaY:n,event:r}),r.ctrlKey||r.lenisStopPropagation)return;let i=r.type.includes(`touch`),a=r.type.includes(`wheel`);if(i&&this.isIos&&(r.type===`touchstart`&&(this._isDraggingSelection=this.isTouchOnSelectionHandle(r)),this._isDraggingSelection)){r.type===`touchend`&&(this._isDraggingSelection=!1);return}this.isTouching=r.type===`touchstart`||r.type===`touchmove`;let o=t===0&&n===0;if(this.options.syncTouch&&i&&r.type===`touchstart`&&o&&!this.isStopped&&!this.isLocked){this.reset();return}let s=this.options.gestureOrientation===`vertical`&&n===0||this.options.gestureOrientation===`horizontal`&&t===0;if(o||s)return;let c=r.composedPath();c=c.slice(0,c.indexOf(this.rootElement));let l=this.options.prevent,u=Math.abs(t)>=Math.abs(n)?`horizontal`:`vertical`;if(c.find(e=>e instanceof HTMLElement&&(typeof l==`function`&&l?.(e)||e.hasAttribute?.(`data-lenis-prevent`)||u===`vertical`&&e.hasAttribute?.(`data-lenis-prevent-vertical`)||u===`horizontal`&&e.hasAttribute?.(`data-lenis-prevent-horizontal`)||i&&e.hasAttribute?.(`data-lenis-prevent-touch`)||a&&e.hasAttribute?.(`data-lenis-prevent-wheel`)||this.options.allowNestedScroll&&this.hasNestedScroll(e,{deltaX:t,deltaY:n}))))return;if(this.isStopped||this.isLocked){r.cancelable&&r.preventDefault();return}if(!(this.options.syncTouch&&i||this.options.smoothWheel&&a)){this.isScrolling=`native`,this.animate.stop(),r.lenisStopPropagation=!0;return}let d=n;this.options.gestureOrientation===`both`?d=Math.abs(n)>Math.abs(t)?n:t:this.options.gestureOrientation===`horizontal`&&(d=t),(!this.options.overscroll||this.options.infinite||this.options.wrapper!==window&&this.limit>0&&(this.animatedScroll>0&&this.animatedScroll<this.limit||this.animatedScroll===0&&n>0||this.animatedScroll===this.limit&&n<0))&&(r.lenisStopPropagation=!0),r.cancelable&&r.preventDefault();let f=i&&this.options.syncTouch,p=i&&r.type===`touchend`;p&&(d=Math.sign(d)*Math.abs(this.velocity)**this.options.touchInertiaExponent),this.scrollTo(this.targetScroll+d,{programmatic:!1,...f?{lerp:p?this.options.syncTouchLerp:1}:{lerp:this.options.lerp,duration:this.options.duration,easing:this.options.easing}})};resize(){this.dimensions.resize(),this.animatedScroll=this.targetScroll=this.actualScroll,this.emit()}emit(){this.emitter.emit(`scroll`,this)}onNativeScroll=()=>{if(this._resetVelocityTimeout!==null&&(clearTimeout(this._resetVelocityTimeout),this._resetVelocityTimeout=null),this._preventNextNativeScrollEvent){this._preventNextNativeScrollEvent=!1;return}if(this.isScrolling===!1||this.isScrolling===`native`){let e=this.animatedScroll;this.animatedScroll=this.targetScroll=this.actualScroll,this.lastVelocity=this.velocity,this.velocity=this.animatedScroll-e,this.direction=Math.sign(this.animatedScroll-e),this.isStopped||(this.isScrolling=`native`),this.emit(),this.velocity!==0&&(this._resetVelocityTimeout=setTimeout(()=>{this.lastVelocity=this.velocity,this.velocity=0,this.isScrolling=!1,this.emit()},400))}};reset(){this.isLocked=!1,this.isScrolling=!1,this.animatedScroll=this.targetScroll=this.actualScroll,this.lastVelocity=this.velocity=0,this.animate.stop()}start(){if(this.isStopped){if(this.options.autoToggle){this.rootElement.style.removeProperty(`overflow`);return}this.internalStart()}}internalStart(){this.isStopped&&(this.reset(),this.isStopped=!1,this.emit())}stop(){if(!this.isStopped){if(this.options.autoToggle){this.rootElement.style.setProperty(`overflow`,`clip`);return}this.internalStop()}}internalStop(){this.isStopped||(this.reset(),this.isStopped=!0,this.emit())}raf=e=>{let t=e-(this.time||e);this.time=e,this.animate.advance(t*.001),this.options.autoRaf&&(this._rafId=requestAnimationFrame(this.raf))};scrollTo(e,{offset:n=0,immediate:r=!1,lock:i=!1,programmatic:a=!0,lerp:o=a?this.options.lerp:void 0,duration:s=a?this.options.duration:void 0,easing:c=a?this.options.easing:void 0,onStart:l,onComplete:u,force:d=!1,userData:p}={}){if((this.isStopped||this.isLocked)&&!d)return;let m=e,h=n;if(typeof m==`string`&&[`top`,`left`,`start`,`#`].includes(m))m=0;else if(typeof m==`string`&&[`bottom`,`right`,`end`].includes(m))m=this.limit;else{let e=null;if(typeof m==`string`?(e=m.startsWith(`#`)?document.getElementById(m.slice(1)):document.querySelector(m),e||(m===`#top`?m=0:console.warn(`Lenis: Target not found`,m))):m instanceof HTMLElement&&m?.nodeType&&(e=m),e){if(this.options.wrapper!==window){let e=this.rootElement.getBoundingClientRect();h-=this.isHorizontal?e.left:e.top}let t=e.getBoundingClientRect(),n=getComputedStyle(e),r=this.isHorizontal?Number.parseFloat(n.scrollMarginLeft):Number.parseFloat(n.scrollMarginTop),i=getComputedStyle(this.rootElement),a=this.isHorizontal?Number.parseFloat(i.scrollPaddingLeft):Number.parseFloat(i.scrollPaddingTop);m=(this.isHorizontal?t.left:t.top)+this.animatedScroll-(Number.isNaN(r)?0:r)-(Number.isNaN(a)?0:a)}}if(typeof m==`number`){if(m+=h,this.options.infinite){if(a){this.targetScroll=this.animatedScroll=this.scroll;let e=m-this.animatedScroll;e>this.limit/2?m-=this.limit:e<-this.limit/2&&(m+=this.limit)}}else m=t(0,m,this.limit);if(m===this.targetScroll){l?.(this),u?.(this);return}if(this.userData=p??{},r){this.animatedScroll=this.targetScroll=m,this.setScroll(this.scroll),this.reset(),this.preventNextNativeScrollEvent(),this.emit(),u?.(this),this.userData={},requestAnimationFrame(()=>{this.dispatchScrollendEvent()});return}a||(this.targetScroll=m),typeof s==`number`&&typeof c!=`function`?c=f:typeof c==`function`&&typeof s!=`number`&&(s=1),this.animate.fromTo(this.animatedScroll,m,{duration:s,easing:c,lerp:o,onStart:()=>{i&&(this.isLocked=!0),this.isScrolling=`smooth`,l?.(this)},onUpdate:(e,t)=>{this.isScrolling=`smooth`,this.lastVelocity=this.velocity,this.velocity=e-this.animatedScroll,this.direction=Math.sign(this.velocity),this.animatedScroll=e,this.setScroll(this.scroll),a&&(this.targetScroll=e),t||this.emit(),t&&(this.reset(),this.emit(),u?.(this),this.userData={},requestAnimationFrame(()=>{this.dispatchScrollendEvent()}),this.preventNextNativeScrollEvent())}})}}preventNextNativeScrollEvent(){this._preventNextNativeScrollEvent=!0,requestAnimationFrame(()=>{this._preventNextNativeScrollEvent=!1})}hasNestedScroll(e,{deltaX:t,deltaY:n}){let r=Date.now();e._lenis||={};let i=e._lenis,a,o,s,c,l,u,d,f,p,m;if(r-(i.time??0)>2e3){i.time=Date.now();let t=window.getComputedStyle(e);if(i.computedStyle=t,a=[`auto`,`overlay`,`scroll`].includes(t.overflowX),o=[`auto`,`overlay`,`scroll`].includes(t.overflowY),l=[`auto`].includes(t.overscrollBehaviorX),u=[`auto`].includes(t.overscrollBehaviorY),i.hasOverflowX=a,i.hasOverflowY=o,!(a||o))return!1;d=e.scrollWidth,f=e.scrollHeight,p=e.clientWidth,m=e.clientHeight,s=d>p,c=f>m,i.isScrollableX=s,i.isScrollableY=c,i.scrollWidth=d,i.scrollHeight=f,i.clientWidth=p,i.clientHeight=m,i.hasOverscrollBehaviorX=l,i.hasOverscrollBehaviorY=u}else s=i.isScrollableX,c=i.isScrollableY,a=i.hasOverflowX,o=i.hasOverflowY,d=i.scrollWidth,f=i.scrollHeight,p=i.clientWidth,m=i.clientHeight,l=i.hasOverscrollBehaviorX,u=i.hasOverscrollBehaviorY;if(!(a&&s||o&&c))return!1;let h=Math.abs(t)>=Math.abs(n)?`horizontal`:`vertical`,g,_,v,y,b,x;if(h===`horizontal`)g=Math.round(e.scrollLeft),_=d-p,v=t,y=a,b=s,x=l;else if(h===`vertical`)g=Math.round(e.scrollTop),_=f-m,v=n,y=o,b=c,x=u;else return!1;return!x&&(g>=_||g<=0)?!0:(v>0?g<_:g>0)&&y&&b}get rootElement(){return this.options.wrapper===window?document.documentElement:this.options.wrapper}get limit(){return this.options.naiveDimensions?this.isHorizontal?this.rootElement.scrollWidth-this.rootElement.clientWidth:this.rootElement.scrollHeight-this.rootElement.clientHeight:this.dimensions.limit[this.isHorizontal?`x`:`y`]}get isHorizontal(){return this.options.orientation===`horizontal`}get actualScroll(){let e=this.options.wrapper;return this.isHorizontal?e.scrollX??e.scrollLeft:e.scrollY??e.scrollTop}get scroll(){return this.options.infinite?i(this.animatedScroll,this.limit):this.animatedScroll}get progress(){return this.limit===0?1:this.scroll/this.limit}get isScrolling(){return this._isScrolling}set isScrolling(e){this._isScrolling!==e&&(this._isScrolling=e,this.updateClassName())}get isStopped(){return this._isStopped}set isStopped(e){this._isStopped!==e&&(this._isStopped=e,this.updateClassName())}get isLocked(){return this._isLocked}set isLocked(e){this._isLocked!==e&&(this._isLocked=e,this.updateClassName())}get isSmooth(){return this.isScrolling===`smooth`}get className(){let e=`lenis`;return this.options.autoToggle&&(e+=` lenis-autoToggle`),this.isStopped&&(e+=` lenis-stopped`),this.isLocked&&(e+=` lenis-locked`),this.isScrolling&&(e+=` lenis-scrolling`),this.isScrolling===`smooth`&&(e+=` lenis-smooth`),e}updateClassName(){this.cleanUpClassName(),this.className.split(` `).forEach(e=>{this.rootElement.classList.add(e)})}cleanUpClassName(){for(let e of Array.from(this.rootElement.classList))(e===`lenis`||e.startsWith(`lenis-`))&&this.rootElement.classList.remove(e)}};globalThis.Lenis=p,globalThis.Lenis.prototype=p.prototype})();
+//# sourceMappingURL=lenis.min.js.map
+</script>
+<script>/*GSAP (内联, 来源 npm gsap@3.x) */
+/*!
+ * GSAP 3.15.0
+ * https://gsap.com
+ * 
+ * @license Copyright 2026, GreenSock. All rights reserved.
+ * Subject to the terms at https://gsap.com/standard-license.
+ * @author: Jack Doyle, jack@greensock.com
+ */
+
+!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t=t||self).window=t.window||{})}(this,function(e){"use strict";function _inheritsLoose(t,e){t.prototype=Object.create(e.prototype),(t.prototype.constructor=t).__proto__=e}function _assertThisInitialized(t){if(void 0===t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return t}function r(t){return"string"==typeof t}function s(t){return"function"==typeof t}function t(t){return"number"==typeof t}function u(t){return void 0===t}function v(t){return"object"==typeof t}function w(t){return!1!==t}function x(){return"undefined"!=typeof window}function y(t){return s(t)||r(t)}function R(t){return(i=bt(t,ht))&&Fe}function S(t,e){return console.warn("Invalid property",t,"set to",e,"Missing plugin? gsap.registerPlugin()")}function T(t,e){return!e&&console.warn(t)}function U(t,e){return t&&(ht[t]=e)&&i&&(i[t]=e)||ht}function V(){return 0}function ga(t){var e,r,i=t[0];if(v(i)||s(i)||(t=[t]),!(e=(i._gsap||{}).harness)){for(r=yt.length;r--&&!yt[r].targetTest(i););e=yt[r]}for(r=t.length;r--;)t[r]&&(t[r]._gsap||(t[r]._gsap=new Xt(t[r],e)))||t.splice(r,1);return t}function ha(t){return t._gsap||ga(Pt(t))[0]._gsap}function ia(t,e,r){return(r=t[e])&&s(r)?t[e]():u(r)&&t.getAttribute&&t.getAttribute(e)||r}function ja(t,e){return(t=t.split(",")).forEach(e)||t}function ka(t){return Math.round(1e5*t)/1e5||0}function la(t){return Math.round(1e7*t)/1e7||0}function ma(t,e){var r=e.charAt(0),i=parseFloat(e.substr(2));return t=parseFloat(t),"+"===r?t+i:"-"===r?t-i:"*"===r?t*i:t/i}function na(t,e){for(var r=e.length,i=0;t.indexOf(e[i])<0&&++i<r;);return i<r}function oa(){var t,e,r=pt.length,i=pt.slice(0);for(_t={},t=pt.length=0;t<r;t++)(e=i[t])&&e._lazy&&(e.render(e._lazy[0],e._lazy[1],!0)._lazy=0)}function pa(t){return!!(t._initted||t._startAt||t.add)}function qa(t,e,r,i){pt.length&&!I&&oa(),t.render(e,r,i||!!(I&&e<0&&pa(t))),pt.length&&!I&&oa()}function ra(t){var e=parseFloat(t);return(e||0===e)&&(t+"").match(ot).length<2?e:r(t)?t.trim():t}function sa(t){return t}function ta(t,e){for(var r in e)r in t||(t[r]=e[r]);return t}function wa(t,e){for(var r in e)"__proto__"!==r&&"constructor"!==r&&"prototype"!==r&&(t[r]=v(e[r])?wa(t[r]||(t[r]={}),e[r]):e[r]);return t}function xa(t,e){var r,i={};for(r in t)r in e||(i[r]=t[r]);return i}function ya(t){var e=t.parent||L,r=t.keyframes?function _setKeyframeDefaults(i){return function(t,e){for(var r in e)r in t||"duration"===r&&i||"ease"===r||(t[r]=e[r])}}(K(t.keyframes)):ta;if(w(t.inherit))for(;e;)r(t,e.vars.defaults),e=e.parent||e._dp;return t}function Aa(t,e,r,i,n){void 0===r&&(r="_first"),void 0===i&&(i="_last");var a,s=t[i];if(n)for(a=e[n];s&&s[n]>a;)s=s._prev;return s?(e._next=s._next,s._next=e):(e._next=t[r],t[r]=e),e._next?e._next._prev=e:t[i]=e,e._prev=s,e.parent=e._dp=t,e}function Ba(t,e,r,i){void 0===r&&(r="_first"),void 0===i&&(i="_last");var n=e._prev,a=e._next;n?n._next=a:t[r]===e&&(t[r]=a),a?a._prev=n:t[i]===e&&(t[i]=n),e._next=e._prev=e.parent=null}function Ca(t,e){t.parent&&(!e||t.parent.autoRemoveChildren)&&t.parent.remove&&t.parent.remove(t),t._act=0}function Da(t,e){if(t&&(!e||e._end>t._dur||e._start<0))for(var r=t;r;)r._dirty=1,r=r.parent;return t}function Fa(t,e,r,i){return t._startAt&&(I?t._startAt.revert(ft):t.vars.immediateRender&&!t.vars.autoRevert||t._startAt.render(e,!0,i))}function Ha(t){return t._repeat?wt(t._tTime,t=t.duration()+t._rDelay)*t:0}function Ja(t,e){return(t-e._start)*e._ts+(0<=e._ts?0:e._dirty?e.totalDuration():e._tDur)}function Ka(t){return t._end=la(t._start+(t._tDur/Math.abs(t._ts||t._rts||q)||0))}function La(t,e){var r=t._dp;return r&&r.smoothChildTiming&&t._ts&&(t._start=la(r._time-(0<t._ts?e/t._ts:((t._dirty?t.totalDuration():t._tDur)-e)/-t._ts)),Ka(t),r._dirty||Da(r,t)),t}function Ma(t,e){var r;if((e._time||!e._dur&&e._initted||e._start<t._time&&(e._dur||!e.add))&&(r=Ja(t.rawTime(),e),(!e._dur||Mt(0,e.totalDuration(),r)-e._tTime>q)&&e.render(r,!0)),Da(t,e)._dp&&t._initted&&t._time>=t._dur&&t._ts){if(t._dur<t.duration())for(r=t;r._dp;)0<=r.rawTime()&&r.totalTime(r._tTime),r=r._dp;t._zTime=-q}}function Na(e,r,i,n){return r.parent&&Ca(r),r._start=la((t(i)?i:i||e!==L?Ot(e,i,r):e._time)+r._delay),r._end=la(r._start+(r.totalDuration()/Math.abs(r.timeScale())||0)),Aa(e,r,"_first","_last",e._sort?"_start":0),xt(r)||(e._recent=r),n||Ma(e,r),e._ts<0&&La(e,e._tTime),e}function Oa(t,e){return(ht.ScrollTrigger||S("scrollTrigger",e))&&ht.ScrollTrigger.create(e,t)}function Pa(t,e,r,i,n){return Ht(t,e,n),t._initted?!r&&t._pt&&!I&&(t._dur&&!1!==t.vars.lazy||!t._dur&&t.vars.lazy)&&f!==It.frame?(pt.push(t),t._lazy=[n,i],1):void 0:1}function Ua(t,e,r,i){var n=t._repeat,a=la(e)||0,s=t._tTime/t._tDur;return s&&!i&&(t._time*=a/t._dur),t._dur=a,t._tDur=n?n<0?1e10:la(a*(n+1)+t._rDelay*n):a,0<s&&!i&&La(t,t._tTime=t._tDur*s),t.parent&&Ka(t),r||Da(t.parent,t),t}function Va(t){return t instanceof Gt?Da(t):Ua(t,t._dur)}function Ya(e,r,i){var n,a,s=t(r[1]),o=(s?2:1)+(e<2?0:1),u=r[o];if(s&&(u.duration=r[1]),u.parent=i,e){for(n=u,a=i;a&&!("immediateRender"in n);)n=a.vars.defaults||{},a=w(a.vars.inherit)&&a.parent;u.immediateRender=w(n.immediateRender),e<2?u.runBackwards=1:u.startAt=r[o-1]}return new te(r[0],u,r[1+o])}function Za(t,e){return t||0===t?e(t):e}function _a(t,e){return r(t)&&(e=ut.exec(t))?e[1]:""}function cb(t,e){return t&&v(t)&&"length"in t&&(!e&&!t.length||t.length-1 in t&&v(t[0]))&&!t.nodeType&&t!==h}function fb(r){return r=Pt(r)[0]||T("Invalid scope")||{},function(t){var e=r.current||r.nativeElement||r;return Pt(t,e.querySelectorAll?e:e===r?T("Invalid scope")||a.createElement("div"):r)}}function gb(t){return t.sort(function(){return.5-Math.random()})}function hb(t){if(s(t))return t;var p=v(t)?t:{each:t},_=jt(p.ease),m=p.from||0,g=parseFloat(p.base)||0,y={},e=0<m&&m<1,T=isNaN(m)||e,b=p.axis,w=m,x=m;return r(m)?w=x={center:.5,edges:.5,end:1}[m]||0:!e&&T&&(w=m[0],x=m[1]),function(t,e,r){var i,n,a,s,o,u,h,l,f,c=(r||p).length,d=y[c];if(!d){if(!(f="auto"===p.grid?0:(p.grid||[1,X])[1])){for(h=-X;h<(h=r[f++].getBoundingClientRect().left)&&f<c;);f<c&&f--}for(d=y[c]=[],i=T?Math.min(f,c)*w-.5:m%f,n=f===X?0:T?c*x/f-.5:m/f|0,l=X,u=h=0;u<c;u++)a=u%f-i,s=n-(u/f|0),d[u]=o=b?Math.abs("y"===b?s:a):$(a*a+s*s),h<o&&(h=o),o<l&&(l=o);"random"===m&&gb(d),d.max=h-l,d.min=l,d.v=c=(parseFloat(p.amount)||parseFloat(p.each)*(c<f?c-1:b?"y"===b?c/f:f:Math.max(f,c/f))||0)*("edges"===m?-1:1),d.b=c<0?g-c:g,d.u=_a(p.amount||p.each)||0,_=_&&c<0?Yt(_):_}return c=(d[t]-d.min)/d.max||0,la(d.b+(_?_(c):c)*d.v)+d.u}}function ib(i){var n=Math.pow(10,((i+"").split(".")[1]||"").length);return function(e){var r=la(Math.round(parseFloat(e)/i)*i*n);return(r-r%1)/n+(t(e)?0:_a(e))}}function jb(h,e){var l,f,r=K(h);return!r&&v(h)&&(l=r=h.radius||X,h.values?(h=Pt(h.values),(f=!t(h[0]))&&(l*=l)):h=ib(h.increment)),Za(e,r?s(h)?function(t){return f=h(t),Math.abs(f-t)<=l?f:t}:function(e){for(var r,i,n=parseFloat(f?e.x:e),a=parseFloat(f?e.y:0),s=X,o=0,u=h.length;u--;)(r=f?(r=h[u].x-n)*r+(i=h[u].y-a)*i:Math.abs(h[u]-n))<s&&(s=r,o=u);return o=!l||s<=l?h[o]:e,f||o===e||t(e)?o:o+_a(e)}:ib(h))}function kb(t,e,r,i){return Za(K(t)?!e:!0===r?!!(r=0):!i,function(){return K(t)?t[~~(Math.random()*t.length)]:(r=r||1e-5)&&(i=r<1?Math.pow(10,(r+"").length-2):1)&&Math.floor(Math.round((t-r/2+Math.random()*(e-t+.99*r))/r)*r*i)/i})}function ob(e,r,t){return Za(t,function(t){return e[~~r(t)]})}function rb(t){return t.replace(tt,function(t){var e=t.indexOf("[")+1,r=t.substring(e||7,e?t.indexOf("]"):t.length-1).split(et);return kb(e?r:+r[0],e?0:+r[1],+r[2]||1e-5)})}function ub(t,e,r){var i,n,a,s=t.labels,o=X;for(i in s)(n=s[i]-e)<0==!!r&&n&&o>(n=Math.abs(n))&&(a=i,o=n);return a}function wb(t){return Ca(t),t.scrollTrigger&&t.scrollTrigger.kill(!!I),t.progress()<1&&At(t,"onInterrupt"),t}function zb(t){if(t)if(t=!t.name&&t.default||t,x()||t.headless){var e=t.name,r=s(t),i=e&&!r&&t.init?function(){this._props=[]}:t,n={init:V,render:_e,add:$t,kill:Te,modifier:ve,rawVars:0},a={targetTest:0,get:0,getSetter:ue,aliases:{},register:0};if(Lt(),t!==i){if(mt[e])return;ta(i,ta(xa(t,n),a)),bt(i.prototype,bt(n,xa(t,a))),mt[i.prop=e]=i,t.targetTest&&(yt.push(i),dt[e]=1),e=("css"===e?"CSS":e.charAt(0).toUpperCase()+e.substr(1))+"Plugin"}U(e,i),t.register&&t.register(Fe,i,we)}else Dt.push(t)}function Cb(t,e,r){return(6*(t+=t<0?1:1<t?-1:0)<1?e+(r-e)*t*6:t<.5?r:3*t<2?e+(r-e)*(2/3-t)*6:e)*zt+.5|0}function Db(e,r,i){var n,a,s,o,u,h,l,f,c,d,p=e?t(e)?[e>>16,e>>8&zt,e&zt]:0:Rt.black;if(!p){if(","===e.substr(-1)&&(e=e.substr(0,e.length-1)),Rt[e])p=Rt[e];else if("#"===e.charAt(0)){if(e.length<6&&(e="#"+(n=e.charAt(1))+n+(a=e.charAt(2))+a+(s=e.charAt(3))+s+(5===e.length?e.charAt(4)+e.charAt(4):"")),9===e.length)return[(p=parseInt(e.substr(1,6),16))>>16,p>>8&zt,p&zt,parseInt(e.substr(7),16)/255];p=[(e=parseInt(e.substr(1),16))>>16,e>>8&zt,e&zt]}else if("hsl"===e.substr(0,3))if(p=d=e.match(rt),r){if(~e.indexOf("="))return p=e.match(it),i&&p.length<4&&(p[3]=1),p}else o=+p[0]%360/360,u=p[1]/100,n=2*(h=p[2]/100)-(a=h<=.5?h*(u+1):h+u-h*u),3<p.length&&(p[3]*=1),p[0]=Cb(o+1/3,n,a),p[1]=Cb(o,n,a),p[2]=Cb(o-1/3,n,a);else p=e.match(rt)||Rt.transparent;p=p.map(Number)}return r&&!d&&(n=p[0]/zt,a=p[1]/zt,s=p[2]/zt,h=((l=Math.max(n,a,s))+(f=Math.min(n,a,s)))/2,l===f?o=u=0:(c=l-f,u=.5<h?c/(2-l-f):c/(l+f),o=l===n?(a-s)/c+(a<s?6:0):l===a?(s-n)/c+2:(n-a)/c+4,o*=60),p[0]=~~(o+.5),p[1]=~~(100*u+.5),p[2]=~~(100*h+.5)),i&&p.length<4&&(p[3]=1),p}function Eb(t){var r=[],i=[],n=-1;return t.split(Et).forEach(function(t){var e=t.match(nt)||[];r.push.apply(r,e),i.push(n+=e.length+1)}),r.c=i,r}function Fb(t,e,r){var i,n,a,s,o="",u=(t+o).match(Et),h=e?"hsla(":"rgba(",l=0;if(!u)return t;if(u=u.map(function(t){return(t=Db(t,e,1))&&h+(e?t[0]+","+t[1]+"%,"+t[2]+"%,"+t[3]:t.join(","))+")"}),r&&(a=Eb(t),(i=r.c).join(o)!==a.c.join(o)))for(s=(n=t.replace(Et,"1").split(nt)).length-1;l<s;l++)o+=n[l]+(~i.indexOf(l)?u.shift()||h+"0,0,0,0)":(a.length?a:u.length?u:r).shift());if(!n)for(s=(n=t.split(Et)).length-1;l<s;l++)o+=n[l]+u[l];return o+n[s]}function Ib(t){var e,r=t.join(" ");if(Et.lastIndex=0,Et.test(r))return e=Ft.test(r),t[1]=Fb(t[1],e),t[0]=Fb(t[0],e,Eb(t[1])),!0}function Rb(t){var e=(t+"").split("("),r=Bt[e[0]];return r&&1<e.length&&r.config?r.config.apply(null,~t.indexOf("{")?[function _parseObjectInString(t){for(var e,r,i,n={},a=t.substr(1,t.length-3).split(":"),s=a[0],o=1,u=a.length;o<u;o++)r=a[o],e=o!==u-1?r.lastIndexOf(","):r.length,i=r.substr(0,e),n[s]=isNaN(i)?i.replace(Ut,"").trim():+i,s=r.substr(e+1).trim();return n}(e[1])]:function _valueInParentheses(t){var e=t.indexOf("(")+1,r=t.indexOf(")"),i=t.indexOf("(",e);return t.substring(e,~i&&i<r?t.indexOf(")",r+1):r)}(t).split(",").map(ra)):Bt._CE&&Nt.test(t)?Bt._CE("",t):r}function Ub(t,e,r,i){void 0===r&&(r=function easeOut(t){return 1-e(1-t)}),void 0===i&&(i=function easeInOut(t){return t<.5?e(2*t)/2:1-e(2*(1-t))/2});var n,a={easeIn:e,easeOut:r,easeInOut:i};return ja(t,function(t){for(var e in Bt[t]=ht[t]=a,Bt[n=t.toLowerCase()]=r,a)Bt[n+("easeIn"===e?".in":"easeOut"===e?".out":".inOut")]=Bt[t+"."+e]=a[e]}),a}function Vb(e){return function(t){return t<.5?(1-e(1-2*t))/2:.5+e(2*(t-.5))/2}}function Wb(r,t,e){function Gm(t){return 1===t?1:i*Math.pow(2,-10*t)*Q((t-a)*n)+1}var i=1<=t?t:1,n=(e||(r?.3:.45))/(t<1?t:1),a=n/G*(Math.asin(1/i)||0),s="out"===r?Gm:"in"===r?function(t){return 1-Gm(1-t)}:Vb(Gm);return n=G/n,s.config=function(t,e){return Wb(r,t,e)},s}function Xb(e,r){function Om(t){return t?--t*t*((r+1)*t+r)+1:0}void 0===r&&(r=1.70158);var t="out"===e?Om:"in"===e?function(t){return 1-Om(1-t)}:Vb(Om);return t.config=function(t){return Xb(e,t)},t}var F,I,l,L,h,n,a,i,o,f,c,d,p,_,m,g,b,k,O,M,C,P,A,D,z,E,B,N,Y={autoSleep:120,force3D:"auto",nullTargetWarn:1,units:{lineHeight:""}},j={duration:.5,overwrite:!1,delay:0},X=1e8,q=1/X,G=2*Math.PI,Z=G/4,W=0,$=Math.sqrt,H=Math.cos,Q=Math.sin,J="function"==typeof ArrayBuffer&&ArrayBuffer.isView||function(){},K=Array.isArray,tt=/random\([^)]+\)/g,et=/,\s*/g,rt=/(?:-?\.?\d|\.)+/gi,it=/[-+=.]*\d+[.e\-+]*\d*[e\-+]*\d*/g,nt=/[-+=.]*\d+[.e-]*\d*[a-z%]*/g,at=/[-+=.]*\d+\.?\d*(?:e-|e\+)?\d*/gi,st=/[+-]=-?[.\d]+/,ot=/[^,'"\[\]\s]+/gi,ut=/^[+\-=e\s\d]*\d+[.\d]*([a-z]*|%)\s*$/i,ht={},lt={suppressEvents:!0,isStart:!0,kill:!1},ft={suppressEvents:!0,kill:!1},ct={suppressEvents:!0},dt={},pt=[],_t={},mt={},gt={},vt=30,yt=[],Tt="",bt=function _merge(t,e){for(var r in e)t[r]=e[r];return t},wt=function _animationCycle(t,e){var r=Math.floor(t=la(t/e));return t&&r===t?r-1:r},xt=function _isFromOrFromStart(t){var e=t.data;return"isFromStart"===e||"isStart"===e},kt={_start:0,endTime:V,totalDuration:V},Ot=function _parsePosition(t,e,i){var n,a,s,o=t.labels,u=t._recent||kt,h=t.duration()>=X?u.endTime(!1):t._dur;return r(e)&&(isNaN(e)||e in o)?(a=e.charAt(0),s="%"===e.substr(-1),n=e.indexOf("="),"<"===a||">"===a?(0<=n&&(e=e.replace(/=/,"")),("<"===a?u._start:u.endTime(0<=u._repeat))+(parseFloat(e.substr(1))||0)*(s?(n<0?u:i).totalDuration()/100:1)):n<0?(e in o||(o[e]=h),o[e]):(a=parseFloat(e.charAt(n-1)+e.substr(n+1)),s&&i&&(a=a/100*(K(i)?i[0]:i).totalDuration()),1<n?_parsePosition(t,e.substr(0,n-1),i)+a:h+a)):null==e?h:+e},Mt=function _clamp(t,e,r){return r<t?t:e<r?e:r},Ct=[].slice,Pt=function toArray(t,e,i){return l&&!e&&l.selector?l.selector(t):!r(t)||i||!n&&Lt()?K(t)?function _flatten(t,e,i){return void 0===i&&(i=[]),t.forEach(function(t){return r(t)&&!e||cb(t,1)?i.push.apply(i,Pt(t)):i.push(t)})||i}(t,i):cb(t)?Ct.call(t,0):t?[t]:[]:Ct.call((e||a).querySelectorAll(t),0)},St=function mapRange(e,t,r,i,n){var a=t-e,s=i-r;return Za(n,function(t){return r+((t-e)/a*s||0)})},At=function _callback(t,e,r){var i,n,a,s=t.vars,o=s[e],u=l,h=t._ctx;if(o)return i=s[e+"Params"],n=s.callbackScope||t,r&&pt.length&&oa(),h&&(l=h),a=i?o.apply(n,i):o.call(n),l=u,a},Dt=[],zt=255,Rt={aqua:[0,zt,zt],lime:[0,zt,0],silver:[192,192,192],black:[0,0,0],maroon:[128,0,0],teal:[0,128,128],blue:[0,0,zt],navy:[0,0,128],white:[zt,zt,zt],olive:[128,128,0],yellow:[zt,zt,0],orange:[zt,165,0],gray:[128,128,128],purple:[128,0,128],green:[0,128,0],red:[zt,0,0],pink:[zt,192,203],cyan:[0,zt,zt],transparent:[zt,zt,zt,0]},Et=function(){var t,e="(?:\\b(?:(?:rgb|rgba|hsl|hsla)\\(.+?\\))|\\B#(?:[0-9a-f]{3,4}){1,2}\\b";for(t in Rt)e+="|"+t+"\\b";return new RegExp(e+")","gi")}(),Ft=/hsl[a]?\(/,It=(O=Date.now,M=500,C=33,P=O(),A=P,z=D=1e3/240,g={time:0,frame:0,tick:function tick(){zl(!0)},deltaRatio:function deltaRatio(t){return b/(1e3/(t||60))},wake:function wake(){o&&(!n&&x()&&(h=n=window,a=h.document||{},ht.gsap=Fe,(h.gsapVersions||(h.gsapVersions=[])).push(Fe.version),R(i||h.GreenSockGlobals||!h.gsap&&h||{}),Dt.forEach(zb)),m="undefined"!=typeof requestAnimationFrame&&requestAnimationFrame,p&&g.sleep(),_=m||function(t){return setTimeout(t,z-1e3*g.time+1|0)},d=1,zl(2))},sleep:function sleep(){(m?cancelAnimationFrame:clearTimeout)(p),d=0,_=V},lagSmoothing:function lagSmoothing(t,e){M=t||1/0,C=Math.min(e||33,M)},fps:function fps(t){D=1e3/(t||240),z=1e3*g.time+D},add:function add(n,t,e){var a=t?function(t,e,r,i){n(t,e,r,i),g.remove(a)}:n;return g.remove(n),E[e?"unshift":"push"](a),Lt(),a},remove:function remove(t,e){~(e=E.indexOf(t))&&E.splice(e,1)&&e<=k&&k--},_listeners:E=[]}),Lt=function _wake(){return!d&&It.wake()},Bt={},Nt=/^[\d.\-M][\d.\-,\s]/,Ut=/["']/g,Yt=function _invertEase(e){return function(t){return 1-e(1-t)}},jt=function _parseEase(t,e){return t&&(s(t)?t:Bt[t]||Rb(t))||e};function zl(t){var e,r,i,n,a=O()-A,s=!0===t;if((M<a||a<0)&&(P+=a-C),(0<(e=(i=(A+=a)-P)-z)||s)&&(n=++g.frame,b=i-1e3*g.time,g.time=i/=1e3,z+=e+(D<=e?4:D-e),r=1),s||(p=_(zl)),r)for(k=0;k<E.length;k++)E[k](i,b,n,t)}function dn(t){return t<N?B*t*t:t<.7272727272727273?B*Math.pow(t-1.5/2.75,2)+.75:t<.9090909090909092?B*(t-=2.25/2.75)*t+.9375:B*Math.pow(t-2.625/2.75,2)+.984375}ja("Linear,Quad,Cubic,Quart,Quint,Strong",function(t,e){var r=e<5?e+1:e;Ub(t+",Power"+(r-1),e?function(t){return Math.pow(t,r)}:function(t){return t},function(t){return 1-Math.pow(1-t,r)},function(t){return t<.5?Math.pow(2*t,r)/2:1-Math.pow(2*(1-t),r)/2})}),Bt.Linear.easeNone=Bt.none=Bt.Linear.easeIn,Ub("Elastic",Wb("in"),Wb("out"),Wb()),B=7.5625,N=1/2.75,Ub("Bounce",function(t){return 1-dn(1-t)},dn),Ub("Expo",function(t){return Math.pow(2,10*(t-1))*t+t*t*t*t*t*t*(1-t)}),Ub("Circ",function(t){return-($(1-t*t)-1)}),Ub("Sine",function(t){return 1===t?1:1-H(t*Z)}),Ub("Back",Xb("in"),Xb("out"),Xb()),Bt.SteppedEase=Bt.steps=ht.SteppedEase={config:function config(t,e){void 0===t&&(t=1);var r=1/t,i=t+(e?0:1),n=e?1:0;return function(t){return((i*Mt(0,.99999999,t)|0)+n)*r}}},j.ease=Bt["quad.out"],ja("onComplete,onUpdate,onStart,onRepeat,onReverseComplete,onInterrupt",function(t){return Tt+=t+","+t+"Params,"});var Vt,Xt=function GSCache(t,e){this.id=W++,(t._gsap=this).target=t,this.harness=e,this.get=e?e.get:ia,this.set=e?e.getSetter:ue},qt=((Vt=Animation.prototype).delay=function delay(t){return t||0===t?(this.parent&&this.parent.smoothChildTiming&&this.startTime(this._start+t-this._delay),this._delay=t,this):this._delay},Vt.duration=function duration(t){return arguments.length?this.totalDuration(0<this._repeat?t+(t+this._rDelay)*this._repeat:t):this.totalDuration()&&this._dur},Vt.totalDuration=function totalDuration(t){return arguments.length?(this._dirty=0,Ua(this,this._repeat<0?t:(t-this._repeat*this._rDelay)/(this._repeat+1))):this._tDur},Vt.totalTime=function totalTime(t,e){if(Lt(),!arguments.length)return this._tTime;var r=this._dp;if(r&&r.smoothChildTiming&&this._ts){for(La(this,t),!r._dp||r.parent||Ma(r,this);r&&r.parent;)r.parent._time!==r._start+(0<=r._ts?r._tTime/r._ts:(r.totalDuration()-r._tTime)/-r._ts)&&r.totalTime(r._tTime,!0),r=r.parent;!this.parent&&this._dp.autoRemoveChildren&&(0<this._ts&&t<this._tDur||this._ts<0&&0<t||!this._tDur&&!t)&&Na(this._dp,this,this._start-this._delay)}return(this._tTime!==t||!this._dur&&!e||this._initted&&Math.abs(this._zTime)===q||!this._initted&&this._dur&&t||!t&&!this._initted&&(this.add||this._ptLookup))&&(this._ts||(this._pTime=t),qa(this,t,e)),this},Vt.time=function time(t,e){return arguments.length?this.totalTime(Math.min(this.totalDuration(),t+Ha(this))%(this._dur+this._rDelay)||(t?this._dur:0),e):this._time},Vt.totalProgress=function totalProgress(t,e){return arguments.length?this.totalTime(this.totalDuration()*t,e):this.totalDuration()?Math.min(1,this._tTime/this._tDur):0<=this.rawTime()&&this._initted?1:0},Vt.progress=function progress(t,e){return arguments.length?this.totalTime(this.duration()*(!this._yoyo||1&this.iteration()?t:1-t)+Ha(this),e):this.duration()?Math.min(1,this._time/this._dur):0<this.rawTime()?1:0},Vt.iteration=function iteration(t,e){var r=this.duration()+this._rDelay;return arguments.length?this.totalTime(this._time+(t-1)*r,e):this._repeat?wt(this._tTime,r)+1:1},Vt.timeScale=function timeScale(t,e){if(!arguments.length)return this._rts===-q?0:this._rts;if(this._rts===t)return this;var r=this.parent&&this._ts?Ja(this.parent._time,this):this._tTime;return this._rts=+t||0,this._ts=this._ps||t===-q?0:this._rts,this.totalTime(Mt(-Math.abs(this._delay),this.totalDuration(),r),!1!==e),Ka(this),function _recacheAncestors(t){for(var e=t.parent;e&&e.parent;)e._dirty=1,e.totalDuration(),e=e.parent;return t}(this)},Vt.paused=function paused(t){return arguments.length?(this._ps!==t&&((this._ps=t)?(this._pTime=this._tTime||Math.max(-this._delay,this.rawTime()),this._ts=this._act=0):(Lt(),this._ts=this._rts,this.totalTime(this.parent&&!this.parent.smoothChildTiming?this.rawTime():this._tTime||this._pTime,1===this.progress()&&Math.abs(this._zTime)!==q&&(this._tTime-=q)))),this):this._ps},Vt.startTime=function startTime(t){if(arguments.length){this._start=la(t);var e=this.parent||this._dp;return!e||!e._sort&&this.parent||Na(e,this,this._start-this._delay),this}return this._start},Vt.endTime=function endTime(t){return this._start+(w(t)?this.totalDuration():this.duration())/Math.abs(this._ts||1)},Vt.rawTime=function rawTime(t){var e=this.parent||this._dp;return e?t&&(!this._ts||this._repeat&&this._time&&this.totalProgress()<1)?this._tTime%(this._dur+this._rDelay):this._ts?Ja(e.rawTime(t),this):this._tTime:this._tTime},Vt.revert=function revert(t){void 0===t&&(t=ct);var e=I;return I=t,pa(this)&&(this.timeline&&this.timeline.revert(t),this.totalTime(-.01,t.suppressEvents)),"nested"!==this.data&&!1!==t.kill&&this.kill(),I=e,this},Vt.globalTime=function globalTime(t){for(var e=this,r=arguments.length?t:e.rawTime();e;)r=e._start+r/(Math.abs(e._ts)||1),e=e._dp;return!this.parent&&this._sat?this._sat.globalTime(t):r},Vt.repeat=function repeat(t){return arguments.length?(this._repeat=t===1/0?-2:t,Va(this)):-2===this._repeat?1/0:this._repeat},Vt.repeatDelay=function repeatDelay(t){if(arguments.length){var e=this._time;return this._rDelay=t,Va(this),e?this.time(e):this}return this._rDelay},Vt.yoyo=function yoyo(t){return arguments.length?(this._yoyo=t,this):this._yoyo},Vt.seek=function seek(t,e){return this.totalTime(Ot(this,t),w(e))},Vt.restart=function restart(t,e){return this.play().totalTime(t?-this._delay:0,w(e)),this._dur||(this._zTime=-q),this},Vt.play=function play(t,e){return null!=t&&this.seek(t,e),this.reversed(!1).paused(!1)},Vt.reverse=function reverse(t,e){return null!=t&&this.seek(t||this.totalDuration(),e),this.reversed(!0).paused(!1)},Vt.pause=function pause(t,e){return null!=t&&this.seek(t,e),this.paused(!0)},Vt.resume=function resume(){return this.paused(!1)},Vt.reversed=function reversed(t){return arguments.length?(!!t!==this.reversed()&&this.timeScale(-this._rts||(t?-q:0)),this):this._rts<0},Vt.invalidate=function invalidate(){return this._initted=this._act=0,this._zTime=-q,this},Vt.isActive=function isActive(){var t,e=this.parent||this._dp,r=this._start;return!(e&&!(this._ts&&this._initted&&e.isActive()&&(t=e.rawTime(!0))>=r&&t<this.endTime(!0)-q))},Vt.eventCallback=function eventCallback(t,e,r){var i=this.vars;return 1<arguments.length?(e?(i[t]=e,r&&(i[t+"Params"]=r),"onUpdate"===t&&(this._onUpdate=e)):delete i[t],this):i[t]},Vt.then=function then(t){var i=this,n=i._prom;return new Promise(function(e){function Ao(){var t=i.then;i.then=null,n&&n(),s(r)&&(r=r(i))&&(r.then||r===i)&&(i.then=t),e(r),i.then=t}var r=s(t)?t:sa;i._initted&&1===i.totalProgress()&&0<=i._ts||!i._tTime&&i._ts<0?Ao():i._prom=Ao})},Vt.kill=function kill(){wb(this)},Animation);function Animation(t){this.vars=t,this._delay=+t.delay||0,(this._repeat=t.repeat===1/0?-2:t.repeat||0)&&(this._rDelay=t.repeatDelay||0,this._yoyo=!!t.yoyo||!!t.yoyoEase),this._ts=1,Ua(this,+t.duration,1,1),this.data=t.data,l&&(this._ctx=l).data.push(this),d||It.wake()}ta(qt.prototype,{_time:0,_start:0,_end:0,_tTime:0,_tDur:0,_dirty:0,_repeat:0,_yoyo:!1,parent:null,_initted:!1,_rDelay:0,_ts:1,_dp:0,ratio:0,_zTime:-q,_prom:0,_ps:!1,_rts:1});var Gt=function(i){function Timeline(t,e){var r;return void 0===t&&(t={}),(r=i.call(this,t)||this).labels={},r.smoothChildTiming=!!t.smoothChildTiming,r.autoRemoveChildren=!!t.autoRemoveChildren,r._sort=w(t.sortChildren),L&&Na(t.parent||L,_assertThisInitialized(r),e),t.reversed&&r.reverse(),t.paused&&r.paused(!0),t.scrollTrigger&&Oa(_assertThisInitialized(r),t.scrollTrigger),r}_inheritsLoose(Timeline,i);var e=Timeline.prototype;return e.to=function to(t,e,r){return Ya(0,arguments,this),this},e.from=function from(t,e,r){return Ya(1,arguments,this),this},e.fromTo=function fromTo(t,e,r,i){return Ya(2,arguments,this),this},e.set=function set(t,e,r){return e.duration=0,e.parent=this,ya(e).repeatDelay||(e.repeat=0),e.immediateRender=!!e.immediateRender,new te(t,e,Ot(this,r),1),this},e.call=function call(t,e,r){return Na(this,te.delayedCall(0,t,e),r)},e.staggerTo=function staggerTo(t,e,r,i,n,a,s){return r.duration=e,r.stagger=r.stagger||i,r.onComplete=a,r.onCompleteParams=s,r.parent=this,new te(t,r,Ot(this,n)),this},e.staggerFrom=function staggerFrom(t,e,r,i,n,a,s){return r.runBackwards=1,ya(r).immediateRender=w(r.immediateRender),this.staggerTo(t,e,r,i,n,a,s)},e.staggerFromTo=function staggerFromTo(t,e,r,i,n,a,s,o){return i.startAt=r,ya(i).immediateRender=w(i.immediateRender),this.staggerTo(t,e,i,n,a,s,o)},e.render=function render(t,e,r){var i,n,a,s,o,u,h,l,f,c,d,p,_=this._time,m=this._dirty?this.totalDuration():this._tDur,g=this._dur,v=t<=0?0:la(t),y=this._zTime<0!=t<0&&(this._initted||!g);if(this!==L&&m<v&&0<=t&&(v=m),v!==this._tTime||r||y){if(_!==this._time&&g&&(v+=this._time-_,t+=this._time-_),i=v,f=this._start,u=!(l=this._ts),y&&(g||(_=this._zTime),!t&&e||(this._zTime=t)),this._repeat){if(d=this._yoyo,o=g+this._rDelay,this._repeat<-1&&t<0)return this.totalTime(100*o+t,e,r);if(i=la(v%o),v===m?(s=this._repeat,i=g):((s=~~(c=la(v/o)))&&s===c&&(i=g,s--),g<i&&(i=g)),c=wt(this._tTime,o),!_&&this._tTime&&c!==s&&this._tTime-c*o-this._dur<=0&&(c=s),d&&1&s&&(i=g-i,p=1),s!==c&&!this._lock){var T=d&&1&c,b=T===(d&&1&s);if(s<c&&(T=!T),_=T?0:v%g?g:v,this._lock=1,this.render(_||(p?0:la(s*o)),e,!g)._lock=0,this._tTime=v,!e&&this.parent&&At(this,"onRepeat"),this.vars.repeatRefresh&&!p&&(this.invalidate()._lock=1,c=s),_&&_!==this._time||u!=!this._ts||this.vars.onRepeat&&!this.parent&&!this._act)return this;if(g=this._dur,m=this._tDur,b&&(this._lock=2,_=T?g:-1e-4,this.render(_,!0),this.vars.repeatRefresh&&!p&&this.invalidate()),this._lock=0,!this._ts&&!u)return this}}if(this._hasPause&&!this._forcing&&this._lock<2&&(h=function _findNextPauseTween(t,e,r){var i;if(e<r)for(i=t._first;i&&i._start<=r;){if("isPause"===i.data&&i._start>e)return i;i=i._next}else for(i=t._last;i&&i._start>=r;){if("isPause"===i.data&&i._start<e)return i;i=i._prev}}(this,la(_),la(i)))&&(v-=i-(i=h._start)),this._tTime=v,this._time=i,this._act=!!l,this._initted||(this._onUpdate=this.vars.onUpdate,this._initted=1,this._zTime=t,_=0),!_&&v&&g&&!e&&!c&&(At(this,"onStart"),this._tTime!==v))return this;if(_<=i&&0<=t)for(n=this._first;n;){if(a=n._next,(n._act||i>=n._start)&&n._ts&&h!==n){if(n.parent!==this)return this.render(t,e,r);if(n.render(0<n._ts?(i-n._start)*n._ts:(n._dirty?n.totalDuration():n._tDur)+(i-n._start)*n._ts,e,r),i!==this._time||!this._ts&&!u){h=0,a&&(v+=this._zTime=-q);break}}n=a}else{n=this._last;for(var w=t<0?t:i;n;){if(a=n._prev,(n._act||w<=n._end)&&n._ts&&h!==n){if(n.parent!==this)return this.render(t,e,r);if(n.render(0<n._ts?(w-n._start)*n._ts:(n._dirty?n.totalDuration():n._tDur)+(w-n._start)*n._ts,e,r||I&&pa(n)),i!==this._time||!this._ts&&!u){h=0,a&&(v+=this._zTime=w?-q:q);break}}n=a}}if(h&&!e&&(this.pause(),h.render(_<=i?0:-q)._zTime=_<=i?1:-1,this._ts))return this._start=f,Ka(this),this.render(t,e,r);this._onUpdate&&!e&&At(this,"onUpdate",!0),(v===m&&this._tTime>=this.totalDuration()||!v&&_)&&(f!==this._start&&Math.abs(l)===Math.abs(this._ts)||this._lock||(!t&&g||!(v===m&&0<this._ts||!v&&this._ts<0)||Ca(this,1),e||t<0&&!_||!v&&!_&&m||(At(this,v===m&&0<=t?"onComplete":"onReverseComplete",!0),!this._prom||v<m&&0<this.timeScale()||this._prom())))}return this},e.add=function add(e,i){var n=this;if(t(i)||(i=Ot(this,i,e)),!(e instanceof qt)){if(K(e))return e.forEach(function(t){return n.add(t,i)}),this;if(r(e))return this.addLabel(e,i);if(!s(e))return this;e=te.delayedCall(0,e)}return this!==e?Na(this,e,i):this},e.getChildren=function getChildren(t,e,r,i){void 0===t&&(t=!0),void 0===e&&(e=!0),void 0===r&&(r=!0),void 0===i&&(i=-X);for(var n=[],a=this._first;a;)a._start>=i&&(a instanceof te?e&&n.push(a):(r&&n.push(a),t&&n.push.apply(n,a.getChildren(!0,e,r)))),a=a._next;return n},e.getById=function getById(t){for(var e=this.getChildren(1,1,1),r=e.length;r--;)if(e[r].vars.id===t)return e[r]},e.remove=function remove(t){return r(t)?this.removeLabel(t):s(t)?this.killTweensOf(t):(t.parent===this&&Ba(this,t),t===this._recent&&(this._recent=this._last),Da(this))},e.totalTime=function totalTime(t,e){return arguments.length?(this._forcing=1,!this._dp&&this._ts&&(this._start=la(It.time-(0<this._ts?t/this._ts:(this.totalDuration()-t)/-this._ts))),i.prototype.totalTime.call(this,t,e),this._forcing=0,this):this._tTime},e.addLabel=function addLabel(t,e){return this.labels[t]=Ot(this,e),this},e.removeLabel=function removeLabel(t){return delete this.labels[t],this},e.addPause=function addPause(t,e,r){var i=te.delayedCall(0,e||V,r);return i.data="isPause",this._hasPause=1,Na(this,i,Ot(this,t))},e.removePause=function removePause(t){var e=this._first;for(t=Ot(this,t);e;)e._start===t&&"isPause"===e.data&&Ca(e),e=e._next},e.killTweensOf=function killTweensOf(t,e,r){for(var i=this.getTweensOf(t,r),n=i.length;n--;)Zt!==i[n]&&i[n].kill(t,e);return this},e.getTweensOf=function getTweensOf(e,r){for(var i,n=[],a=Pt(e),s=this._first,o=t(r);s;)s instanceof te?na(s._targets,a)&&(o?(!Zt||s._initted&&s._ts)&&s.globalTime(0)<=r&&s.globalTime(s.totalDuration())>r:!r||s.isActive())&&n.push(s):(i=s.getTweensOf(a,r)).length&&n.push.apply(n,i),s=s._next;return n},e.tweenTo=function tweenTo(t,e){e=e||{};var r,i=this,n=Ot(i,t),a=e.startAt,s=e.onStart,o=e.onStartParams,u=e.immediateRender,h=te.to(i,ta({ease:e.ease||"none",lazy:!1,immediateRender:!1,time:n,overwrite:"auto",duration:e.duration||Math.abs((n-(a&&"time"in a?a.time:i._time))/i.timeScale())||q,onStart:function onStart(){if(i.pause(),!r){var t=e.duration||Math.abs((n-(a&&"time"in a?a.time:i._time))/i.timeScale());h._dur!==t&&Ua(h,t,0,1).render(h._time,!0,!0),r=1}s&&s.apply(h,o||[])}},e));return u?h.render(0):h},e.tweenFromTo=function tweenFromTo(t,e,r){return this.tweenTo(e,ta({startAt:{time:Ot(this,t)}},r))},e.recent=function recent(){return this._recent},e.nextLabel=function nextLabel(t){return void 0===t&&(t=this._time),ub(this,Ot(this,t))},e.previousLabel=function previousLabel(t){return void 0===t&&(t=this._time),ub(this,Ot(this,t),1)},e.currentLabel=function currentLabel(t){return arguments.length?this.seek(t,!0):this.previousLabel(this._time+q)},e.shiftChildren=function shiftChildren(t,e,r){void 0===r&&(r=0);var i,n=this._first,a=this.labels;for(t=la(t);n;)n._start>=r&&(n._start+=t,n._end+=t),n=n._next;if(e)for(i in a)a[i]>=r&&(a[i]+=t);return Da(this)},e.invalidate=function invalidate(t){var e=this._first;for(this._lock=0;e;)e.invalidate(t),e=e._next;return i.prototype.invalidate.call(this,t)},e.clear=function clear(t){void 0===t&&(t=!0);for(var e,r=this._first;r;)e=r._next,this.remove(r),r=e;return this._dp&&(this._time=this._tTime=this._pTime=0),t&&(this.labels={}),Da(this)},e.totalDuration=function totalDuration(t){var e,r,i,n=0,a=this,s=a._last,o=X;if(arguments.length)return a.timeScale((a._repeat<0?a.duration():a.totalDuration())/(a.reversed()?-t:t));if(a._dirty){for(i=a.parent;s;)e=s._prev,s._dirty&&s.totalDuration(),o<(r=s._start)&&a._sort&&s._ts&&!a._lock?(a._lock=1,Na(a,s,r-s._delay,1)._lock=0):o=r,r<0&&s._ts&&(n-=r,(!i&&!a._dp||i&&i.smoothChildTiming)&&(a._start+=la(r/a._ts),a._time-=r,a._tTime-=r),a.shiftChildren(-r,!1,-Infinity),o=0),s._end>n&&s._ts&&(n=s._end),s=e;Ua(a,a===L&&a._time>n?a._time:n,1,1),a._dirty=0}return a._tDur},Timeline.updateRoot=function updateRoot(t){if(L._ts&&(qa(L,Ja(t,L)),f=It.frame),It.frame>=vt){vt+=Y.autoSleep||120;var e=L._first;if((!e||!e._ts)&&Y.autoSleep&&It._listeners.length<2){for(;e&&!e._ts;)e=e._next;e||It.sleep()}}},Timeline}(qt);ta(Gt.prototype,{_lock:0,_hasPause:0,_forcing:0});function cc(t,e,i,n,a,o){var u,h,l,f;if(mt[t]&&!1!==(u=new mt[t]).init(a,u.rawVars?e[t]:function _processVars(t,e,i,n,a){if(s(t)&&(t=Qt(t,a,e,i,n)),!v(t)||t.style&&t.nodeType||K(t)||J(t))return r(t)?Qt(t,a,e,i,n):t;var o,u={};for(o in t)u[o]=Qt(t[o],a,e,i,n);return u}(e[t],n,a,o,i),i,n,o)&&(i._pt=h=new we(i._pt,a,t,0,1,u.render,u,0,u.priority),i!==c))for(l=i._ptLookup[i._targets.indexOf(a)],f=u._props.length;f--;)l[u._props[f]]=h;return u}function ic(t,r,e,i){var n,a,s=r.ease||i||"power1.inOut";if(K(r))a=e[t]||(e[t]=[]),r.forEach(function(t,e){return a.push({t:e/(r.length-1)*100,v:t,e:s})});else for(n in r)a=e[n]||(e[n]=[]),"ease"===n||a.push({t:parseFloat(t),v:r[n],e:s})}var Zt,Wt,$t=function _addPropTween(t,e,i,n,a,o,u,h,l,f){s(n)&&(n=n(a||0,t,o));var c,d=t[e],p="get"!==i?i:s(d)?l?t[e.indexOf("set")||!s(t["get"+e.substr(3)])?e:"get"+e.substr(3)](l):t[e]():d,_=s(d)?l?se:ae:ie;if(r(n)&&(~n.indexOf("random(")&&(n=rb(n)),"="===n.charAt(1)&&(!(c=ma(p,n)+(_a(p)||0))&&0!==c||(n=c))),!f||p!==n||Wt)return isNaN(p*n)||""===n?(d||e in t||S(e,n),function _addComplexStringPropTween(t,e,r,i,n,a,s){var o,u,h,l,f,c,d,p,_=new we(this._pt,t,e,0,1,pe,null,n),m=0,g=0;for(_.b=r,_.e=i,r+="",(d=~(i+="").indexOf("random("))&&(i=rb(i)),a&&(a(p=[r,i],t,e),r=p[0],i=p[1]),u=r.match(at)||[];o=at.exec(i);)l=o[0],f=i.substring(m,o.index),h?h=(h+1)%5:"rgba("===f.substr(-5)&&(h=1),l!==u[g++]&&(c=parseFloat(u[g-1])||0,_._pt={_next:_._pt,p:f||1===g?f:",",s:c,c:"="===l.charAt(1)?ma(c,l)-c:parseFloat(l)-c,m:h&&h<4?Math.round:0},m=at.lastIndex);return _.c=m<i.length?i.substring(m,i.length):"",_.fp=s,(st.test(i)||d)&&(_.e=0),this._pt=_}.call(this,t,e,p,n,_,h||Y.stringFilter,l)):(c=new we(this._pt,t,e,+p||0,n-(p||0),"boolean"==typeof d?de:fe,0,_),l&&(c.fp=l),u&&c.modifier(u,this,t),this._pt=c)},Ht=function _initTween(t,e,r){var i,n,a,s,o,u,h,l,f,c,d,p,_,m=t.vars,g=m.ease,v=m.startAt,y=m.immediateRender,T=m.lazy,b=m.onUpdate,x=m.runBackwards,k=m.yoyoEase,O=m.keyframes,M=m.autoRevert,C=t._dur,P=t._startAt,S=t._targets,A=t.parent,D=A&&"nested"===A.data?A.vars.targets:S,z="auto"===t._overwrite&&!F,R=t.timeline,E=m.easeReverse||k;if(!R||O&&g||(g="none"),t._ease=jt(g,j.ease),t._rEase=E&&(jt(E)||t._ease),t._from=!R&&!!m.runBackwards,t._from&&(t.ratio=1),!R||O&&!m.stagger){if(p=(l=S[0]?ha(S[0]).harness:0)&&m[l.prop],i=xa(m,dt),P&&(P._zTime<0&&P.progress(1),e<0&&x&&y&&!M?P.render(-1,!0):P.revert(x&&C?ft:lt),P._lazy=0),v){if(Ca(t._startAt=te.set(S,ta({data:"isStart",overwrite:!1,parent:A,immediateRender:!0,lazy:!P&&w(T),startAt:null,delay:0,onUpdate:b&&function(){return At(t,"onUpdate")},stagger:0},v))),t._startAt._dp=0,t._startAt._sat=t,e<0&&(I||!y&&!M)&&t._startAt.revert(ft),y&&C&&e<=0&&r<=0)return void(e&&(t._zTime=e))}else if(x&&C&&!P)if(e&&(y=!1),a=ta({overwrite:!1,data:"isFromStart",lazy:y&&!P&&w(T),immediateRender:y,stagger:0,parent:A},i),p&&(a[l.prop]=p),Ca(t._startAt=te.set(S,a)),t._startAt._dp=0,t._startAt._sat=t,e<0&&(I?t._startAt.revert(ft):t._startAt.render(-1,!0)),t._zTime=e,y){if(!e)return}else _initTween(t._startAt,q,q);for(t._pt=t._ptCache=0,T=C&&w(T)||T&&!C,n=0;n<S.length;n++){if(h=(o=S[n])._gsap||ga(S)[n]._gsap,t._ptLookup[n]=c={},_t[h.id]&&pt.length&&oa(),d=D===S?n:D.indexOf(o),l&&!1!==(f=new l).init(o,p||i,t,d,D)&&(t._pt=s=new we(t._pt,o,f.name,0,1,f.render,f,0,f.priority),f._props.forEach(function(t){c[t]=s}),f.priority&&(u=1)),!l||p)for(a in i)mt[a]&&(f=cc(a,i,t,d,o,D))?f.priority&&(u=1):c[a]=s=$t.call(t,o,a,"get",i[a],d,D,0,m.stringFilter);t._op&&t._op[n]&&t.kill(o,t._op[n]),z&&t._pt&&(Zt=t,L.killTweensOf(o,c,t.globalTime(e)),_=!t.parent,Zt=0),t._pt&&T&&(_t[h.id]=1)}u&&be(t),t._onInit&&t._onInit(t)}t._onUpdate=b,t._initted=(!t._op||t._pt)&&!_,O&&e<=0&&R.render(X,!0,!0)},Qt=function _parseFuncOrString(t,e,i,n,a){return s(t)?t.call(e,i,n,a):r(t)&&~t.indexOf("random(")?rb(t):t},Jt=Tt+"repeat,repeatDelay,yoyo,repeatRefresh,yoyoEase,easeReverse,autoRevert",Kt={};ja(Jt+",id,stagger,delay,duration,paused,scrollTrigger",function(t){return Kt[t]=1});var te=function(E){function Tween(e,r,i,n){var a;"number"==typeof r&&(i.duration=r,r=i,i=null);var s,o,u,h,l,f,c,d,p=(a=E.call(this,n?r:ya(r))||this).vars,_=p.duration,m=p.delay,g=p.immediateRender,b=p.stagger,x=p.overwrite,k=p.keyframes,O=p.defaults,M=p.scrollTrigger,C=r.parent||L,P=(K(e)||J(e)?t(e[0]):"length"in r)?[e]:Pt(e);if(a._targets=P.length?ga(P):T("GSAP target "+e+" not found. https://gsap.com",!Y.nullTargetWarn)||[],a._ptLookup=[],a._overwrite=x,k||b||y(_)||y(m)){var S=(r=a.vars).easeReverse||r.yoyoEase;if((s=a.timeline=new Gt({data:"nested",defaults:O||{},targets:C&&"nested"===C.data?C.vars.targets:P})).kill(),s.parent=s._dp=_assertThisInitialized(a),s._start=0,b||y(_)||y(m)){if(h=P.length,c=b&&hb(b),v(b))for(l in b)~Jt.indexOf(l)&&((d=d||{})[l]=b[l]);for(o=0;o<h;o++)(u=xa(r,Kt)).stagger=0,S&&(u.easeReverse=S),d&&bt(u,d),f=P[o],u.duration=+Qt(_,_assertThisInitialized(a),o,f,P),u.delay=(+Qt(m,_assertThisInitialized(a),o,f,P)||0)-a._delay,!b&&1===h&&u.delay&&(a._delay=m=u.delay,a._start+=m,u.delay=0),s.to(f,u,c?c(o,f,P):0),s._ease=Bt.none;s.duration()?_=m=0:a.timeline=0}else if(k){ya(ta(s.vars.defaults,{ease:"none"})),s._ease=jt(k.ease||r.ease||"none");var A,D,z,R=0;if(K(k))k.forEach(function(t){return s.to(P,t,">")}),s.duration();else{for(l in u={},k)"ease"===l||"easeEach"===l||ic(l,k[l],u,k.easeEach);for(l in u)for(A=u[l].sort(function(t,e){return t.t-e.t}),o=R=0;o<A.length;o++)(z={ease:(D=A[o]).e,duration:(D.t-(o?A[o-1].t:0))/100*_})[l]=D.v,s.to(P,z,R),R+=z.duration;s.duration()<_&&s.to({},{duration:_-s.duration()})}}_||a.duration(_=s.duration())}else a.timeline=0;return!0!==x||F||(Zt=_assertThisInitialized(a),L.killTweensOf(P),Zt=0),Na(C,_assertThisInitialized(a),i),r.reversed&&a.reverse(),r.paused&&a.paused(!0),(g||!_&&!k&&a._start===la(C._time)&&w(g)&&function _hasNoPausedAncestors(t){return!t||t._ts&&_hasNoPausedAncestors(t.parent)}(_assertThisInitialized(a))&&"nested"!==C.data)&&(a._tTime=-q,a.render(Math.max(0,-m)||0)),M&&Oa(_assertThisInitialized(a),M),a}_inheritsLoose(Tween,E);var e=Tween.prototype;return e.render=function render(t,e,r){var i,n,a,s,o,u,h,l,f=this._time,c=this._tDur,d=this._dur,p=t<0,_=c-q<t&&!p?c:t<q?0:t;if(d){if(_!==this._tTime||!t||r||!this._initted&&this._tTime||this._startAt&&this._zTime<0!=p||this._lazy){if(i=_,l=this.timeline,this._repeat){if(s=d+this._rDelay,this._repeat<-1&&p)return this.totalTime(100*s+t,e,r);if(i=la(_%s),_===c?(a=this._repeat,i=d):(a=~~(o=la(_/s)))&&a===o?(i=d,a--):d<i&&(i=d),(u=this._yoyo&&1&a)&&(i=d-i),o=wt(this._tTime,s),i===f&&!r&&this._initted&&a===o)return this._tTime=_,this;a!==o&&this.vars.repeatRefresh&&!u&&!this._lock&&i!==s&&this._initted&&(this._lock=r=1,this.render(la(s*a),!0).invalidate()._lock=0)}if(!this._initted){if(Pa(this,p?t:i,r,e,_))return this._tTime=0,this;if(!(f===this._time||r&&this.vars.repeatRefresh&&a!==o))return this;if(d!==this._dur)return this.render(t,e,r)}if(this._rEase){var m=i<f;if(m!==this._inv){var g=m?f:d-f;this._inv=m,this._from&&(this.ratio=1-this.ratio),this._invRatio=this.ratio,this._invTime=f,this._invRecip=g?(m?-1:1)/g:0,this._invScale=m?-this.ratio:1-this.ratio,this._invEase=m?this._rEase:this._ease}this.ratio=h=this._invRatio+this._invScale*this._invEase((i-this._invTime)*this._invRecip)}else this.ratio=h=this._ease(i/d);if(this._from&&(this.ratio=h=1-h),this._tTime=_,this._time=i,!this._act&&this._ts&&(this._act=1,this._lazy=0),!f&&_&&!e&&!o&&(At(this,"onStart"),this._tTime!==_))return this;for(n=this._pt;n;)n.r(h,n.d),n=n._next;l&&l.render(t<0?t:l._dur*l._ease(i/this._dur),e,r)||this._startAt&&(this._zTime=t),this._onUpdate&&!e&&(p&&Fa(this,t,0,r),At(this,"onUpdate")),this._repeat&&a!==o&&this.vars.onRepeat&&!e&&this.parent&&At(this,"onRepeat"),_!==this._tDur&&_||this._tTime!==_||(p&&!this._onUpdate&&Fa(this,t,0,!0),!t&&d||!(_===this._tDur&&0<this._ts||!_&&this._ts<0)||Ca(this,1),e||p&&!f||!(_||f||u)||(At(this,_===c?"onComplete":"onReverseComplete",!0),!this._prom||_<c&&0<this.timeScale()||this._prom()))}}else!function _renderZeroDurationTween(t,e,r,i){var n,a,s,o=t.ratio,u=e<0||!e&&(!t._start&&function _parentPlayheadIsBeforeStart(t){var e=t.parent;return e&&e._ts&&e._initted&&!e._lock&&(e.rawTime()<0||_parentPlayheadIsBeforeStart(e))}(t)&&(t._initted||!xt(t))||(t._ts<0||t._dp._ts<0)&&!xt(t))?0:1,h=t._rDelay,l=0;if(h&&t._repeat&&(l=Mt(0,t._tDur,e),a=wt(l,h),t._yoyo&&1&a&&(u=1-u),a!==wt(t._tTime,h)&&(o=1-u,t.vars.repeatRefresh&&t._initted&&t.invalidate())),u!==o||I||i||t._zTime===q||!e&&t._zTime){if(!t._initted&&Pa(t,e,i,r,l))return;for(s=t._zTime,t._zTime=e||(r?q:0),r=r||e&&!s,t.ratio=u,t._from&&(u=1-u),t._time=0,t._tTime=l,n=t._pt;n;)n.r(u,n.d),n=n._next;e<0&&Fa(t,e,0,!0),t._onUpdate&&!r&&At(t,"onUpdate"),l&&t._repeat&&!r&&t.parent&&At(t,"onRepeat"),(e>=t._tDur||e<0)&&t.ratio===u&&(u&&Ca(t,1),r||I||(At(t,u?"onComplete":"onReverseComplete",!0),t._prom&&t._prom()))}else t._zTime||(t._zTime=e)}(this,t,e,r);return this},e.targets=function targets(){return this._targets},e.invalidate=function invalidate(t){return t&&this.vars.runBackwards||(this._startAt=0),this._pt=this._op=this._onUpdate=this._lazy=this.ratio=0,this._ptLookup=[],this.timeline&&this.timeline.invalidate(t),E.prototype.invalidate.call(this,t)},e.resetTo=function resetTo(t,e,r,i,n){d||It.wake(),this._ts||this.play();var a,s=Math.min(this._dur,(this._dp._time-this._start)*this._ts);return this._initted||Ht(this,s),a=this._ease(s/this._dur),function _updatePropTweens(t,e,r,i,n,a,s,o){var u,h,l,f,c=(t._pt&&t._ptCache||(t._ptCache={}))[e];if(!c)for(c=t._ptCache[e]=[],l=t._ptLookup,f=t._targets.length;f--;){if((u=l[f][e])&&u.d&&u.d._pt)for(u=u.d._pt;u&&u.p!==e&&u.fp!==e;)u=u._next;if(!u)return Wt=1,t.vars[e]="+=0",Ht(t,s),Wt=0,o?T(e+" not eligible for reset. Try splitting into individual properties"):1;c.push(u)}for(f=c.length;f--;)(u=(h=c[f])._pt||h).s=!i&&0!==i||n?u.s+(i||0)+a*u.c:i,u.c=r-u.s,h.e&&(h.e=ka(r)+_a(h.e)),h.b&&(h.b=u.s+_a(h.b))}(this,t,e,r,i,a,s,n)?this.resetTo(t,e,r,i,1):(La(this,0),this.parent||Aa(this._dp,this,"_first","_last",this._dp._sort?"_start":0),this.render(0))},e.kill=function kill(t,e){if(void 0===e&&(e="all"),!(t||e&&"all"!==e))return this._lazy=this._pt=0,this.parent?wb(this):this.scrollTrigger&&this.scrollTrigger.kill(!!I),this;if(this.timeline){var i=this.timeline.totalDuration();return this.timeline.killTweensOf(t,e,Zt&&!0!==Zt.vars.overwrite)._first||wb(this),this.parent&&i!==this.timeline.totalDuration()&&Ua(this,this._dur*this.timeline._tDur/i,0,1),this}var n,a,s,o,u,h,l,f=this._targets,c=t?Pt(t):f,d=this._ptLookup,p=this._pt;if((!e||"all"===e)&&function _arraysMatch(t,e){for(var r=t.length,i=r===e.length;i&&r--&&t[r]===e[r];);return r<0}(f,c))return"all"===e&&(this._pt=0),wb(this);for(n=this._op=this._op||[],"all"!==e&&(r(e)&&(u={},ja(e,function(t){return u[t]=1}),e=u),e=function _addAliasesToVars(t,e){var r,i,n,a,s=t[0]?ha(t[0]).harness:0,o=s&&s.aliases;if(!o)return e;for(i in r=bt({},e),o)if(i in r)for(n=(a=o[i].split(",")).length;n--;)r[a[n]]=r[i];return r}(f,e)),l=f.length;l--;)if(~c.indexOf(f[l]))for(u in a=d[l],"all"===e?(n[l]=e,o=a,s={}):(s=n[l]=n[l]||{},o=e),o)(h=a&&a[u])&&("kill"in h.d&&!0!==h.d.kill(u)||Ba(this,h,"_pt"),delete a[u]),"all"!==s&&(s[u]=1);return this._initted&&!this._pt&&p&&wb(this),this},Tween.to=function to(t,e,r){return new Tween(t,e,r)},Tween.from=function from(t,e){return Ya(1,arguments)},Tween.delayedCall=function delayedCall(t,e,r,i){return new Tween(e,0,{immediateRender:!1,lazy:!1,overwrite:!1,delay:t,onComplete:e,onReverseComplete:e,onCompleteParams:r,onReverseCompleteParams:r,callbackScope:i})},Tween.fromTo=function fromTo(t,e,r){return Ya(2,arguments)},Tween.set=function set(t,e){return e.duration=0,e.repeatDelay||(e.repeat=0),new Tween(t,e)},Tween.killTweensOf=function killTweensOf(t,e,r){return L.killTweensOf(t,e,r)},Tween}(qt);ta(te.prototype,{_targets:[],_lazy:0,_startAt:0,_op:0,_onInit:0}),ja("staggerTo,staggerFrom,staggerFromTo",function(r){te[r]=function(){var t=new Gt,e=Ct.call(arguments,0);return e.splice("staggerFromTo"===r?5:4,0,0),t[r].apply(t,e)}});function qc(t,e,r){return t.setAttribute(e,r)}function yc(t,e,r,i){i.mSet(t,e,i.m.call(i.tween,r,i.mt),i)}var ie=function _setterPlain(t,e,r){return t[e]=r},ae=function _setterFunc(t,e,r){return t[e](r)},se=function _setterFuncWithParam(t,e,r,i){return t[e](i.fp,r)},ue=function _getSetter(t,e){return s(t[e])?ae:u(t[e])&&t.setAttribute?qc:ie},fe=function _renderPlain(t,e){return e.set(e.t,e.p,Math.round(1e6*(e.s+e.c*t))/1e6,e)},de=function _renderBoolean(t,e){return e.set(e.t,e.p,!!(e.s+e.c*t),e)},pe=function _renderComplexString(t,e){var r=e._pt,i="";if(!t&&e.b)i=e.b;else if(1===t&&e.e)i=e.e;else{for(;r;)i=r.p+(r.m?r.m(r.s+r.c*t):Math.round(1e4*(r.s+r.c*t))/1e4)+i,r=r._next;i+=e.c}e.set(e.t,e.p,i,e)},_e=function _renderPropTweens(t,e){for(var r=e._pt;r;)r.r(t,r.d),r=r._next},ve=function _addPluginModifier(t,e,r,i){for(var n,a=this._pt;a;)n=a._next,a.p===i&&a.modifier(t,e,r),a=n},Te=function _killPropTweensOf(t){for(var e,r,i=this._pt;i;)r=i._next,i.p===t&&!i.op||i.op===t?Ba(this,i,"_pt"):i.dep||(e=1),i=r;return!e},be=function _sortPropTweensByPriority(t){for(var e,r,i,n,a=t._pt;a;){for(e=a._next,r=i;r&&r.pr>a.pr;)r=r._next;(a._prev=r?r._prev:n)?a._prev._next=a:i=a,(a._next=r)?r._prev=a:n=a,a=e}t._pt=i},we=(PropTween.prototype.modifier=function modifier(t,e,r){this.mSet=this.mSet||this.set,this.set=yc,this.m=t,this.mt=r,this.tween=e},PropTween);function PropTween(t,e,r,i,n,a,s,o,u){this.t=e,this.s=i,this.c=n,this.p=r,this.r=a||fe,this.d=s||this,this.set=o||ie,this.pr=u||0,(this._next=t)&&(t._prev=this)}ja(Tt+"parent,duration,ease,delay,overwrite,runBackwards,startAt,yoyo,immediateRender,repeat,repeatDelay,data,paused,reversed,lazy,callbackScope,stringFilter,id,yoyoEase,stagger,inherit,repeatRefresh,keyframes,autoRevert,scrollTrigger,easeReverse",function(t){return dt[t]=1}),ht.TweenMax=ht.TweenLite=te,ht.TimelineLite=ht.TimelineMax=Gt,L=new Gt({sortChildren:!1,defaults:j,autoRemoveChildren:!0,id:"root",smoothChildTiming:!0}),Y.stringFilter=Ib;function Gc(t){return(Oe[t]||Me).map(function(t){return t()})}function Hc(){var t=Date.now(),o=[];2<t-Ce&&(Gc("matchMediaInit"),ke.forEach(function(t){var e,r,i,n,a=t.queries,s=t.conditions;for(r in a)(e=h.matchMedia(a[r]).matches)&&(i=1),e!==s[r]&&(s[r]=e,n=1);n&&(t.revert(),i&&o.push(t))}),Gc("matchMediaRevert"),o.forEach(function(e){return e.onMatch(e,function(t){return e.add(null,t)})}),Ce=t,Gc("matchMedia"))}var xe,ke=[],Oe={},Me=[],Ce=0,Pe=0,Se=((xe=Context.prototype).add=function add(t,i,n){function Gw(){var t,e=l,r=a.selector;return e&&e!==a&&e.data.push(a),n&&(a.selector=fb(n)),l=a,t=i.apply(a,arguments),s(t)&&a._r.push(t),l=e,a.selector=r,a.isReverted=!1,t}s(t)&&(n=i,i=t,t=s);var a=this;return a.last=Gw,t===s?Gw(a,function(t){return a.add(null,t)}):t?a[t]=Gw:Gw},xe.ignore=function ignore(t){var e=l;l=null,t(this),l=e},xe.getTweens=function getTweens(){var e=[];return this.data.forEach(function(t){return t instanceof Context?e.push.apply(e,t.getTweens()):t instanceof te&&!(t.parent&&"nested"===t.parent.data)&&e.push(t)}),e},xe.clear=function clear(){this._r.length=this.data.length=0},xe.kill=function kill(i,t){var n=this;if(i?function(){for(var t,e=n.getTweens(),r=n.data.length;r--;)"isFlip"===(t=n.data[r]).data&&(t.revert(),t.getChildren(!0,!0,!1).forEach(function(t){return e.splice(e.indexOf(t),1)}));for(e.map(function(t){return{g:t._dur||t._delay||t._sat&&!t._sat.vars.immediateRender?t.globalTime(0):-1/0,t:t}}).sort(function(t,e){return e.g-t.g||-1/0}).forEach(function(t){return t.t.revert(i)}),r=n.data.length;r--;)(t=n.data[r])instanceof Gt?"nested"!==t.data&&(t.scrollTrigger&&t.scrollTrigger.revert(),t.kill()):t instanceof te||!t.revert||t.revert(i);n._r.forEach(function(t){return t(i,n)}),n.isReverted=!0}():this.data.forEach(function(t){return t.kill&&t.kill()}),this.clear(),t)for(var e=ke.length;e--;)ke[e].id===this.id&&ke.splice(e,1)},xe.revert=function revert(t){this.kill(t||{})},Context);function Context(t,e){this.selector=e&&fb(e),this.data=[],this._r=[],this.isReverted=!1,this.id=Pe++,t&&this.add(t)}var De,Re=((De=MatchMedia.prototype).add=function add(t,e,r){v(t)||(t={matches:t});var i,n,a,s=new Se(0,r||this.scope),o=s.conditions={};for(n in l&&!s.selector&&(s.selector=l.selector),this.contexts.push(s),e=s.add("onMatch",e),s.queries=t)"all"===n?a=1:(i=h.matchMedia(t[n]))&&(ke.indexOf(s)<0&&ke.push(s),(o[n]=i.matches)&&(a=1),i.addListener?i.addListener(Hc):i.addEventListener("change",Hc));return a&&e(s,function(t){return s.add(null,t)}),this},De.revert=function revert(t){this.kill(t||{})},De.kill=function kill(e){this.contexts.forEach(function(t){return t.kill(e,!0)})},MatchMedia);function MatchMedia(t){this.contexts=[],this.scope=t,l&&l.data.push(this)}var Ee={registerPlugin:function registerPlugin(){for(var t=arguments.length,e=new Array(t),r=0;r<t;r++)e[r]=arguments[r];e.forEach(function(t){return zb(t)})},timeline:function timeline(t){return new Gt(t)},getTweensOf:function getTweensOf(t,e){return L.getTweensOf(t,e)},getProperty:function getProperty(i,t,e,n){r(i)&&(i=Pt(i)[0]);var a=ha(i||{}).get,s=e?sa:ra;return"native"===e&&(e=""),i?t?s((mt[t]&&mt[t].get||a)(i,t,e,n)):function(t,e,r){return s((mt[t]&&mt[t].get||a)(i,t,e,r))}:i},quickSetter:function quickSetter(r,e,i){if(1<(r=Pt(r)).length){var n=r.map(function(t){return Fe.quickSetter(t,e,i)}),a=n.length;return function(t){for(var e=a;e--;)n[e](t)}}r=r[0]||{};var s=mt[e],o=ha(r),u=o.harness&&(o.harness.aliases||{})[e]||e,h=s?function(t){var e=new s;c._pt=0,e.init(r,i?t+i:t,c,0,[r]),e.render(1,e),c._pt&&_e(1,c)}:o.set(r,u);return s?h:function(t){return h(r,u,i?t+i:t,o,1)}},quickTo:function quickTo(t,i,e){function $x(t,e,r){return n.resetTo(i,t,e,r)}var r,n=Fe.to(t,ta(((r={})[i]="+=0.1",r.paused=!0,r.stagger=0,r),e||{}));return $x.tween=n,$x},isTweening:function isTweening(t){return 0<L.getTweensOf(t,!0).length},defaults:function defaults(t){return t&&t.ease&&(t.ease=jt(t.ease,j.ease)),wa(j,t||{})},config:function config(t){return wa(Y,t||{})},registerEffect:function registerEffect(t){var i=t.name,n=t.effect,e=t.plugins,a=t.defaults,r=t.extendTimeline;(e||"").split(",").forEach(function(t){return t&&!mt[t]&&!ht[t]&&T(i+" effect requires "+t+" plugin.")}),gt[i]=function(t,e,r){return n(Pt(t),ta(e||{},a),r)},r&&(Gt.prototype[i]=function(t,e,r){return this.add(gt[i](t,v(e)?e:(r=e)&&{},this),r)})},registerEase:function registerEase(t,e){Bt[t]=jt(e)},parseEase:function parseEase(t,e){return arguments.length?jt(t,e):Bt},getById:function getById(t){return L.getById(t)},exportRoot:function exportRoot(t,e){void 0===t&&(t={});var r,i,n=new Gt(t);for(n.smoothChildTiming=w(t.smoothChildTiming),L.remove(n),n._dp=0,n._time=n._tTime=L._time,r=L._first;r;)i=r._next,!e&&!r._dur&&r instanceof te&&r.vars.onComplete===r._targets[0]||Na(n,r,r._start-r._delay),r=i;return Na(L,n,0),n},context:function context(t,e){return t?new Se(t,e):l},matchMedia:function matchMedia(t){return new Re(t)},matchMediaRefresh:function matchMediaRefresh(){return ke.forEach(function(t){var e,r,i=t.conditions;for(r in i)i[r]&&(i[r]=!1,e=1);e&&t.revert()})||Hc()},addEventListener:function addEventListener(t,e){var r=Oe[t]||(Oe[t]=[]);~r.indexOf(e)||r.push(e)},removeEventListener:function removeEventListener(t,e){var r=Oe[t],i=r&&r.indexOf(e);0<=i&&r.splice(i,1)},utils:{wrap:function wrap(e,t,r){var i=t-e;return K(e)?ob(e,wrap(0,e.length),t):Za(r,function(t){return(i+(t-e)%i)%i+e})},wrapYoyo:function wrapYoyo(e,t,r){var i=t-e,n=2*i;return K(e)?ob(e,wrapYoyo(0,e.length-1),t):Za(r,function(t){return e+(i<(t=(n+(t-e)%n)%n||0)?n-t:t)})},distribute:hb,random:kb,snap:jb,normalize:function normalize(t,e,r){return St(t,e,0,1,r)},getUnit:_a,clamp:function clamp(e,r,t){return Za(t,function(t){return Mt(e,r,t)})},splitColor:Db,toArray:Pt,selector:fb,mapRange:St,pipe:function pipe(){for(var t=arguments.length,e=new Array(t),r=0;r<t;r++)e[r]=arguments[r];return function(t){return e.reduce(function(t,e){return e(t)},t)}},unitize:function unitize(e,r){return function(t){return e(parseFloat(t))+(r||_a(t))}},interpolate:function interpolate(e,i,t,n){var a=isNaN(e+i)?0:function(t){return(1-t)*e+t*i};if(!a){var s,o,u,h,l,f=r(e),c={};if(!0===t&&(n=1)&&(t=null),f)e={p:e},i={p:i};else if(K(e)&&!K(i)){for(u=[],h=e.length,l=h-2,o=1;o<h;o++)u.push(interpolate(e[o-1],e[o]));h--,a=function func(t){t*=h;var e=Math.min(l,~~t);return u[e](t-e)},t=i}else n||(e=bt(K(e)?[]:{},e));if(!u){for(s in i)$t.call(c,e,s,"get",i[s]);a=function func(t){return _e(t,c)||(f?e.p:e)}}}return Za(t,a)},shuffle:gb},install:R,effects:gt,ticker:It,updateRoot:Gt.updateRoot,plugins:mt,globalTimeline:L,core:{PropTween:we,globals:U,Tween:te,Timeline:Gt,Animation:qt,getCache:ha,_removeLinkedListItem:Ba,reverting:function reverting(){return I},context:function context(t){return t&&l&&(l.data.push(t),t._ctx=l),l},suppressOverwrites:function suppressOverwrites(t){return F=t}}};ja("to,from,fromTo,delayedCall,set,killTweensOf",function(t){return Ee[t]=te[t]}),It.add(Gt.updateRoot),c=Ee.to({},{duration:0});function Lc(t,e){for(var r=t._pt;r&&r.p!==e&&r.op!==e&&r.fp!==e;)r=r._next;return r}function Nc(t,a){return{name:t,headless:1,rawVars:1,init:function init(t,n,e){e._onInit=function(t){var e,i;if(r(n)&&(e={},ja(n,function(t){return e[t]=1}),n=e),a){for(i in e={},n)e[i]=a(n[i]);n=e}!function _addModifiers(t,e){var r,i,n,a=t._targets;for(r in e)for(i=a.length;i--;)(n=(n=t._ptLookup[i][r])&&n.d)&&(n._pt&&(n=Lc(n,r)),n&&n.modifier&&n.modifier(e[r],t,a[i],r))}(t,n)}}}}var Fe=Ee.registerPlugin({name:"attr",init:function init(t,e,r,i,n){var a,s,o;for(a in this.tween=r,e)o=t.getAttribute(a)||"",(s=this.add(t,"setAttribute",(o||0)+"",e[a],i,n,0,0,a)).op=a,s.b=o,this._props.push(a)},render:function render(t,e){for(var r=e._pt;r;)I?r.set(r.t,r.p,r.b,r):r.r(t,r.d),r=r._next}},{name:"endArray",headless:1,init:function init(t,e){for(var r=e.length;r--;)this.add(t,r,t[r]||0,e[r],0,0,0,0,0,1)}},Nc("roundProps",ib),Nc("modifiers"),Nc("snap",jb))||Ee;te.version=Gt.version=Fe.version="3.15.0",o=1,x()&&Lt();function xd(t,e){return e.set(e.t,e.p,Math.round(1e4*(e.s+e.c*t))/1e4+e.u,e)}function yd(t,e){return e.set(e.t,e.p,1===t?e.e:Math.round(1e4*(e.s+e.c*t))/1e4+e.u,e)}function zd(t,e){return e.set(e.t,e.p,t?Math.round(1e4*(e.s+e.c*t))/1e4+e.u:e.b,e)}function Ad(t,e){return e.set(e.t,e.p,1===t?e.e:t?Math.round(1e4*(e.s+e.c*t))/1e4+e.u:e.b,e)}function Bd(t,e){var r=e.s+e.c*t;e.set(e.t,e.p,~~(r+(r<0?-.5:.5))+e.u,e)}function Cd(t,e){return e.set(e.t,e.p,t?e.e:e.b,e)}function Dd(t,e){return e.set(e.t,e.p,1!==t?e.b:e.e,e)}function Ed(t,e,r){return t.style[e]=r}function Fd(t,e,r){return t.style.setProperty(e,r)}function Gd(t,e,r){return t._gsap[e]=r}function Hd(t,e,r){return t._gsap.scaleX=t._gsap.scaleY=r}function Id(t,e,r,i,n){var a=t._gsap;a.scaleX=a.scaleY=r,a.renderTransform(n,a)}function Jd(t,e,r,i,n){var a=t._gsap;a[e]=r,a.renderTransform(n,a)}function Md(t,e){var r=this,i=this.target,n=i.style,a=i._gsap;if(t in ur&&n){if(this.tfm=this.tfm||{},"transform"===t)return _r.transform.split(",").forEach(function(t){return Md.call(r,t,e)});if(~(t=_r[t]||t).indexOf(",")?t.split(",").forEach(function(t){return r.tfm[t]=wr(i,t)}):this.tfm[t]=a.x?a[t]:wr(i,t),t===gr&&(this.tfm.zOrigin=a.zOrigin),0<=this.props.indexOf(mr))return;a.svg&&(this.svgo=i.getAttribute("data-svg-origin"),this.props.push(gr,e,"")),t=mr}(n||e)&&this.props.push(t,e,n[t])}function Nd(t){t.translate&&(t.removeProperty("translate"),t.removeProperty("scale"),t.removeProperty("rotate"))}function Od(){var t,e,r=this.props,i=this.target,n=i.style,a=i._gsap;for(t=0;t<r.length;t+=3)r[t+1]?2===r[t+1]?i[r[t]](r[t+2]):i[r[t]]=r[t+2]:r[t+2]?n[r[t]]=r[t+2]:n.removeProperty("--"===r[t].substr(0,2)?r[t]:r[t].replace(cr,"-$1").toLowerCase());if(this.tfm){for(e in this.tfm)a[e]=this.tfm[e];a.svg&&(a.renderTransform(),i.setAttribute("data-svg-origin",this.svgo||"")),(t=je())&&t.isStart||n[mr]||(Nd(n),a.zOrigin&&n[gr]&&(n[gr]+=" "+a.zOrigin+"px",a.zOrigin=0,a.renderTransform()),a.uncache=1)}}function Pd(t,e){var r={target:t,props:[],revert:Od,save:Md};return t._gsap||Fe.core.getCache(t),e&&t.style&&t.nodeType&&e.split(",").forEach(function(t){return r.save(t)}),r}function Rd(t,e){var r=Le.createElementNS?Le.createElementNS((e||"http://www.w3.org/1999/xhtml").replace(/^https/,"http"),t):Le.createElement(t);return r&&r.style?r:Le.createElement(t)}function Sd(t,e,r){var i=getComputedStyle(t);return i[e]||i.getPropertyValue(e.replace(cr,"-$1").toLowerCase())||i.getPropertyValue(e)||!r&&Sd(t,yr(e)||e,1)||""}function Vd(){(function _windowExists(){return"undefined"!=typeof window})()&&window.document&&(Ie=window,Le=Ie.document,Be=Le.documentElement,Ue=Rd("div")||{style:{}},Rd("div"),mr=yr(mr),gr=mr+"Origin",Ue.style.cssText="border-width:0;line-height:0;position:absolute;padding:0",Ve=!!yr("perspective"),je=Fe.core.reverting,Ne=1)}function Wd(t){var e,r=t.ownerSVGElement,i=Rd("svg",r&&r.getAttribute("xmlns")||"http://www.w3.org/2000/svg"),n=t.cloneNode(!0);n.style.display="block",i.appendChild(n),Be.appendChild(i);try{e=n.getBBox()}catch(t){}return i.removeChild(n),Be.removeChild(i),e}function Xd(t,e){for(var r=e.length;r--;)if(t.hasAttribute(e[r]))return t.getAttribute(e[r])}function Yd(e){var r,i;try{r=e.getBBox()}catch(t){r=Wd(e),i=1}return r&&(r.width||r.height)||i||(r=Wd(e)),!r||r.width||r.x||r.y?r:{x:+Xd(e,["x","cx","x1"])||0,y:+Xd(e,["y","cy","y1"])||0,width:0,height:0}}function Zd(t){return!(!t.getCTM||t.parentNode&&!t.ownerSVGElement||!Yd(t))}function $d(t,e){if(e){var r,i=t.style;e in ur&&e!==gr&&(e=mr),i.removeProperty?("ms"!==(r=e.substr(0,2))&&"webkit"!==e.substr(0,6)||(e="-"+e),i.removeProperty("--"===r?e:e.replace(cr,"-$1").toLowerCase())):i.removeAttribute(e)}}function _d(t,e,r,i,n,a){var s=new we(t._pt,e,r,0,1,a?Dd:Cd);return(t._pt=s).b=i,s.e=n,t._props.push(r),s}function ce(t,e,r,i){var n,a,s,o,u=parseFloat(r)||0,h=(r+"").trim().substr((u+"").length)||"px",l=Ue.style,f=dr.test(e),c="svg"===t.tagName.toLowerCase(),d=(c?"client":"offset")+(f?"Width":"Height"),p="px"===i,_="%"===i;if(i===h||!u||Tr[i]||Tr[h])return u;if("px"===h||p||(u=ce(t,e,r,"px")),o=t.getCTM&&Zd(t),(_||"%"===h)&&(ur[e]||~e.indexOf("adius")))return n=o?t.getBBox()[f?"width":"height"]:t[d],ka(_?u/n*100:u/100*n);if(l[f?"width":"height"]=100+(p?h:i),a="rem"!==i&&~e.indexOf("adius")||"em"===i&&t.appendChild&&!c?t:t.parentNode,o&&(a=(t.ownerSVGElement||{}).parentNode),a&&a!==Le&&a.appendChild||(a=Le.body),(s=a._gsap)&&_&&s.width&&f&&s.time===It.time&&!s.uncache)return ka(u/s.width*100);if(!_||"height"!==e&&"width"!==e)!_&&"%"!==h||br[Sd(a,"display")]||(l.position=Sd(t,"position")),a===t&&(l.position="static"),a.appendChild(Ue),n=Ue[d],a.removeChild(Ue),l.position="absolute";else{var m=t.style[e];t.style[e]=100+i,n=t[d],m?t.style[e]=m:$d(t,e)}return f&&_&&((s=ha(a)).time=It.time,s.width=a[d]),ka(p?n*u/100:n&&u?100/n*u:0)}function ee(t,e,r,i){if(!r||"none"===r){var n=yr(e,t,1),a=n&&Sd(t,n,1);a&&a!==r?(e=n,r=a):"borderColor"===e&&(r=Sd(t,"borderTopColor"))}var s,o,u,h,l,f,c,d,p,_,m,g=new we(this._pt,t.style,e,0,1,pe),v=0,y=0;if(g.b=r,g.e=i,r+="","var(--"===(i+="").substring(0,6)&&(i=Sd(t,i.substring(4,i.indexOf(")")))),"auto"===i&&(f=t.style[e],t.style[e]=i,i=Sd(t,e)||i,f?t.style[e]=f:$d(t,e)),Ib(s=[r,i]),i=s[1],u=(r=s[0]).match(nt)||[],(i.match(nt)||[]).length){for(;o=nt.exec(i);)c=o[0],p=i.substring(v,o.index),l?l=(l+1)%5:"rgba("!==p.substr(-5)&&"hsla("!==p.substr(-5)||(l=1),c!==(f=u[y++]||"")&&(h=parseFloat(f)||0,m=f.substr((h+"").length),"="===c.charAt(1)&&(c=ma(h,c)+m),d=parseFloat(c),_=c.substr((d+"").length),v=nt.lastIndex-_.length,_||(_=_||Y.units[e]||m,v===i.length&&(i+=_,g.e+=_)),m!==_&&(h=ce(t,e,f,_)||0),g._pt={_next:g._pt,p:p||1===y?p:",",s:h,c:d-h,m:l&&l<4||"zIndex"===e?Math.round:0});g.c=v<i.length?i.substring(v,i.length):""}else g.r="display"===e&&"none"===i?Dd:Cd;return st.test(i)&&(g.e=0),this._pt=g}function ge(t){var e=t.split(" "),r=e[0],i=e[1]||"50%";return"top"!==r&&"bottom"!==r&&"left"!==i&&"right"!==i||(t=r,r=i,i=t),e[0]=xr[r]||r,e[1]=xr[i]||i,e.join(" ")}function he(t,e){if(e.tween&&e.tween._time===e.tween._dur){var r,i,n,a=e.t,s=a.style,o=e.u,u=a._gsap;if("all"===o||!0===o)s.cssText="",i=1;else for(n=(o=o.split(",")).length;-1<--n;)r=o[n],ur[r]&&(i=1,r="transformOrigin"===r?gr:mr),$d(a,r);i&&($d(a,mr),u&&(u.svg&&a.removeAttribute("transform"),s.scale=s.rotate=s.translate="none",Cr(a,1),u.uncache=1,Nd(s)))}}function le(t){return"matrix(1, 0, 0, 1, 0, 0)"===t||"none"===t||!t}function me(t){var e=Sd(t,mr);return le(e)?Or:e.substr(7).match(it).map(ka)}function ne(t,e){var r,i,n,a,s=t._gsap||ha(t),o=t.style,u=me(t);return s.svg&&t.getAttribute("transform")?"1,0,0,1,0,0"===(u=[(n=t.transform.baseVal.consolidate().matrix).a,n.b,n.c,n.d,n.e,n.f]).join(",")?Or:u:(u!==Or||t.offsetParent||t===Be||s.svg||(n=o.display,o.display="block",(r=t.parentNode)&&(t.offsetParent||t.getBoundingClientRect().width)||(a=1,i=t.nextElementSibling,Be.appendChild(t)),u=me(t),n?o.display=n:$d(t,"display"),a&&(i?r.insertBefore(t,i):r?r.appendChild(t):Be.removeChild(t))),e&&6<u.length?[u[0],u[1],u[4],u[5],u[12],u[13]]:u)}function oe(t,e,r,i,n,a){var s,o,u,h=t._gsap,l=n||ne(t,!0),f=h.xOrigin||0,c=h.yOrigin||0,d=h.xOffset||0,p=h.yOffset||0,_=l[0],m=l[1],g=l[2],v=l[3],y=l[4],T=l[5],b=e.split(" "),w=parseFloat(b[0])||0,x=parseFloat(b[1])||0;r?l!==Or&&(o=_*v-m*g)&&(u=w*(-m/o)+x*(_/o)-(_*T-m*y)/o,w=w*(v/o)+x*(-g/o)+(g*T-v*y)/o,x=u):(w=(s=Yd(t)).x+(~b[0].indexOf("%")?w/100*s.width:w),x=s.y+(~(b[1]||b[0]).indexOf("%")?x/100*s.height:x)),i||!1!==i&&h.smooth?(y=w-f,T=x-c,h.xOffset=d+(y*_+T*g)-y,h.yOffset=p+(y*m+T*v)-T):h.xOffset=h.yOffset=0,h.xOrigin=w,h.yOrigin=x,h.smooth=!!i,h.origin=e,h.originIsAbsolute=!!r,t.style[gr]="0px 0px",a&&(_d(a,h,"xOrigin",f,w),_d(a,h,"yOrigin",c,x),_d(a,h,"xOffset",d,h.xOffset),_d(a,h,"yOffset",p,h.yOffset)),t.setAttribute("data-svg-origin",w+" "+x)}function re(t,e,r){var i=_a(e);return ka(parseFloat(e)+parseFloat(ce(t,"x",r+"px",i)))+i}function ye(t,e,i,n,a){var s,o,u=360,h=r(a),l=parseFloat(a)*(h&&~a.indexOf("rad")?hr:1)-n,f=n+l+"deg";return h&&("short"===(s=a.split("_")[1])&&(l%=u)!==l%180&&(l+=l<0?u:-u),"cw"===s&&l<0?l=(l+36e9)%u-~~(l/u)*u:"ccw"===s&&0<l&&(l=(l-36e9)%u-~~(l/u)*u)),t._pt=o=new we(t._pt,e,i,n,l,yd),o.e=f,o.u="deg",t._props.push(i),o}function ze(t,e){for(var r in e)t[r]=e[r];return t}function Ae(t,e,r){var i,n,a,s,o,u,h,l=ze({},r._gsap),f=r.style;for(n in l.svg?(a=r.getAttribute("transform"),r.setAttribute("transform",""),f[mr]=e,i=Cr(r,1),$d(r,mr),r.setAttribute("transform",a)):(a=getComputedStyle(r)[mr],f[mr]=e,i=Cr(r,1),f[mr]=a),ur)(a=l[n])!==(s=i[n])&&"perspective,force3D,transformOrigin,svgOrigin".indexOf(n)<0&&(o=_a(a)!==(h=_a(s))?ce(r,n,a,h):parseFloat(a),u=parseFloat(s),t._pt=new we(t._pt,i,n,o,u-o,xd),t._pt.u=h||0,t._props.push(n));ze(i,l)}var Ie,Le,Be,Ne,Ue,Ye,je,Ve,Xe=Bt.Power0,qe=Bt.Power1,Ge=Bt.Power2,Ze=Bt.Power3,We=Bt.Power4,$e=Bt.Linear,He=Bt.Quad,Qe=Bt.Cubic,Je=Bt.Quart,Ke=Bt.Quint,tr=Bt.Strong,er=Bt.Elastic,rr=Bt.Back,ir=Bt.SteppedEase,nr=Bt.Bounce,ar=Bt.Sine,sr=Bt.Expo,or=Bt.Circ,ur={},hr=180/Math.PI,lr=Math.PI/180,fr=Math.atan2,cr=/([A-Z])/g,dr=/(left|right|width|margin|padding|x)/i,pr=/[\s,\(]\S/,_r={autoAlpha:"opacity,visibility",scale:"scaleX,scaleY",alpha:"opacity"},mr="transform",gr=mr+"Origin",vr="O,Moz,ms,Ms,Webkit".split(","),yr=function _checkPropPrefix(t,e,r){var i=(e||Ue).style,n=5;if(t in i&&!r)return t;for(t=t.charAt(0).toUpperCase()+t.substr(1);n--&&!(vr[n]+t in i););return n<0?null:(3===n?"ms":0<=n?vr[n]:"")+t},Tr={deg:1,rad:1,turn:1},br={grid:1,flex:1},wr=function _get(t,e,r,i){var n;return Ne||Vd(),e in _r&&"transform"!==e&&~(e=_r[e]).indexOf(",")&&(e=e.split(",")[0]),ur[e]&&"transform"!==e?(n=Cr(t,i),n="transformOrigin"!==e?n[e]:n.svg?n.origin:Pr(Sd(t,gr))+" "+n.zOrigin+"px"):(n=t.style[e])&&"auto"!==n&&!i&&!~(n+"").indexOf("calc(")||(n=kr[e]&&kr[e](t,e,r)||Sd(t,e)||ia(t,e)||("opacity"===e?1:0)),r&&!~(n+"").trim().indexOf(" ")?ce(t,e,n,r)+r:n},xr={top:"0%",bottom:"100%",left:"0%",right:"100%",center:"50%"},kr={clearProps:function clearProps(t,e,r,i,n){if("isFromStart"!==n.data){var a=t._pt=new we(t._pt,e,r,0,0,he);return a.u=i,a.pr=-10,a.tween=n,t._props.push(r),1}}},Or=[1,0,0,1,0,0],Mr={},Cr=function _parseTransform(t,e){var r=t._gsap||new Xt(t);if("x"in r&&!e&&!r.uncache)return r;var i,n,a,s,o,u,h,l,f,c,d,p,_,m,g,v,y,T,b,w,x,k,O,M,C,P,S,A,D,z,R,E,F=t.style,I=r.scaleX<0,L="deg",B=getComputedStyle(t),N=Sd(t,gr)||"0";return i=n=a=u=h=l=f=c=d=0,s=o=1,r.svg=!(!t.getCTM||!Zd(t)),B.translate&&("none"===B.translate&&"none"===B.scale&&"none"===B.rotate||(F[mr]=("none"!==B.translate?"translate3d("+(B.translate+" 0 0").split(" ").slice(0,3).join(", ")+") ":"")+("none"!==B.rotate?"rotate("+B.rotate+") ":"")+("none"!==B.scale?"scale("+B.scale.split(" ").join(",")+") ":"")+("none"!==B[mr]?B[mr]:"")),F.scale=F.rotate=F.translate="none"),m=ne(t,r.svg),r.svg&&(M=r.uncache?(C=t.getBBox(),N=r.xOrigin-C.x+"px "+(r.yOrigin-C.y)+"px",""):!e&&t.getAttribute("data-svg-origin"),oe(t,M||N,!!M||r.originIsAbsolute,!1!==r.smooth,m)),p=r.xOrigin||0,_=r.yOrigin||0,m!==Or&&(T=m[0],b=m[1],w=m[2],x=m[3],i=k=m[4],n=O=m[5],6===m.length?(s=Math.sqrt(T*T+b*b),o=Math.sqrt(x*x+w*w),u=T||b?fr(b,T)*hr:0,(f=w||x?fr(w,x)*hr+u:0)&&(o*=Math.abs(Math.cos(f*lr))),r.svg&&(i-=p-(p*T+_*w),n-=_-(p*b+_*x))):(E=m[6],z=m[7],S=m[8],A=m[9],D=m[10],R=m[11],i=m[12],n=m[13],a=m[14],h=(g=fr(E,D))*hr,g&&(M=k*(v=Math.cos(-g))+S*(y=Math.sin(-g)),C=O*v+A*y,P=E*v+D*y,S=k*-y+S*v,A=O*-y+A*v,D=E*-y+D*v,R=z*-y+R*v,k=M,O=C,E=P),l=(g=fr(-w,D))*hr,g&&(v=Math.cos(-g),R=x*(y=Math.sin(-g))+R*v,T=M=T*v-S*y,b=C=b*v-A*y,w=P=w*v-D*y),u=(g=fr(b,T))*hr,g&&(M=T*(v=Math.cos(g))+b*(y=Math.sin(g)),C=k*v+O*y,b=b*v-T*y,O=O*v-k*y,T=M,k=C),h&&359.9<Math.abs(h)+Math.abs(u)&&(h=u=0,l=180-l),s=ka(Math.sqrt(T*T+b*b+w*w)),o=ka(Math.sqrt(O*O+E*E)),g=fr(k,O),f=2e-4<Math.abs(g)?g*hr:0,d=R?1/(R<0?-R:R):0),r.svg&&(M=t.getAttribute("transform"),r.forceCSS=t.setAttribute("transform","")||!le(Sd(t,mr)),M&&t.setAttribute("transform",M))),90<Math.abs(f)&&Math.abs(f)<270&&(I?(s*=-1,f+=u<=0?180:-180,u+=u<=0?180:-180):(o*=-1,f+=f<=0?180:-180)),e=e||r.uncache,r.x=i-((r.xPercent=i&&(!e&&r.xPercent||(Math.round(t.offsetWidth/2)===Math.round(-i)?-50:0)))?t.offsetWidth*r.xPercent/100:0)+"px",r.y=n-((r.yPercent=n&&(!e&&r.yPercent||(Math.round(t.offsetHeight/2)===Math.round(-n)?-50:0)))?t.offsetHeight*r.yPercent/100:0)+"px",r.z=a+"px",r.scaleX=ka(s),r.scaleY=ka(o),r.rotation=ka(u)+L,r.rotationX=ka(h)+L,r.rotationY=ka(l)+L,r.skewX=f+L,r.skewY=c+L,r.transformPerspective=d+"px",(r.zOrigin=parseFloat(N.split(" ")[2])||!e&&r.zOrigin||0)&&(F[gr]=Pr(N)),r.xOffset=r.yOffset=0,r.force3D=Y.force3D,r.renderTransform=r.svg?Er:Ve?Rr:Sr,r.uncache=0,r},Pr=function _firstTwoOnly(t){return(t=t.split(" "))[0]+" "+t[1]},Sr=function _renderNon3DTransforms(t,e){e.z="0px",e.rotationY=e.rotationX="0deg",e.force3D=0,Rr(t,e)},Ar="0deg",Dr="0px",zr=") ",Rr=function _renderCSSTransforms(t,e){var r=e||this,i=r.xPercent,n=r.yPercent,a=r.x,s=r.y,o=r.z,u=r.rotation,h=r.rotationY,l=r.rotationX,f=r.skewX,c=r.skewY,d=r.scaleX,p=r.scaleY,_=r.transformPerspective,m=r.force3D,g=r.target,v=r.zOrigin,y="",T="auto"===m&&t&&1!==t||!0===m;if(v&&(l!==Ar||h!==Ar)){var b,w=parseFloat(h)*lr,x=Math.sin(w),k=Math.cos(w);w=parseFloat(l)*lr,b=Math.cos(w),a=re(g,a,x*b*-v),s=re(g,s,-Math.sin(w)*-v),o=re(g,o,k*b*-v+v)}_!==Dr&&(y+="perspective("+_+zr),(i||n)&&(y+="translate("+i+"%, "+n+"%) "),!T&&a===Dr&&s===Dr&&o===Dr||(y+=o!==Dr||T?"translate3d("+a+", "+s+", "+o+") ":"translate("+a+", "+s+zr),u!==Ar&&(y+="rotate("+u+zr),h!==Ar&&(y+="rotateY("+h+zr),l!==Ar&&(y+="rotateX("+l+zr),f===Ar&&c===Ar||(y+="skew("+f+", "+c+zr),1===d&&1===p||(y+="scale("+d+", "+p+zr),g.style[mr]=y||"translate(0, 0)"},Er=function _renderSVGTransforms(t,e){var r,i,n,a,s,o=e||this,u=o.xPercent,h=o.yPercent,l=o.x,f=o.y,c=o.rotation,d=o.skewX,p=o.skewY,_=o.scaleX,m=o.scaleY,g=o.target,v=o.xOrigin,y=o.yOrigin,T=o.xOffset,b=o.yOffset,w=o.forceCSS,x=parseFloat(l),k=parseFloat(f);c=parseFloat(c),d=parseFloat(d),(p=parseFloat(p))&&(d+=p=parseFloat(p),c+=p),c||d?(c*=lr,d*=lr,r=Math.cos(c)*_,i=Math.sin(c)*_,n=Math.sin(c-d)*-m,a=Math.cos(c-d)*m,d&&(p*=lr,s=Math.tan(d-p),n*=s=Math.sqrt(1+s*s),a*=s,p&&(s=Math.tan(p),r*=s=Math.sqrt(1+s*s),i*=s)),r=ka(r),i=ka(i),n=ka(n),a=ka(a)):(r=_,a=m,i=n=0),(x&&!~(l+"").indexOf("px")||k&&!~(f+"").indexOf("px"))&&(x=ce(g,"x",l,"px"),k=ce(g,"y",f,"px")),(v||y||T||b)&&(x=ka(x+v-(v*r+y*n)+T),k=ka(k+y-(v*i+y*a)+b)),(u||h)&&(s=g.getBBox(),x=ka(x+u/100*s.width),k=ka(k+h/100*s.height)),s="matrix("+r+","+i+","+n+","+a+","+x+","+k+")",g.setAttribute("transform",s),w&&(g.style[mr]=s)};ja("padding,margin,Width,Radius",function(e,r){var t="Right",i="Bottom",n="Left",o=(r<3?["Top",t,i,n]:["Top"+n,"Top"+t,i+t,i+n]).map(function(t){return r<2?e+t:"border"+t+e});kr[1<r?"border"+e:e]=function(e,t,r,i,n){var a,s;if(arguments.length<4)return a=o.map(function(t){return wr(e,t,r)}),5===(s=a.join(" ")).split(a[0]).length?a[0]:s;a=(i+"").split(" "),s={},o.forEach(function(t,e){return s[t]=a[e]=a[e]||a[(e-1)/2|0]}),e.init(t,s,n)}});var Fr,Ir,Lr,Br={name:"css",register:Vd,targetTest:function targetTest(t){return t.style&&t.nodeType},init:function init(t,e,i,n,a){var s,o,u,h,l,f,c,d,p,_,m,g,v,y,T,b,w,x=this._props,k=t.style,O=i.vars.startAt;for(c in Ne||Vd(),this.styles=this.styles||Pd(t),b=this.styles.props,this.tween=i,e)if("autoRound"!==c&&(o=e[c],!mt[c]||!cc(c,e,i,n,t,a)))if(l=typeof o,f=kr[c],"function"===l&&(l=typeof(o=o.call(i,n,t,a))),"string"===l&&~o.indexOf("random(")&&(o=rb(o)),f)f(this,t,c,o,i)&&(T=1);else if("--"===c.substr(0,2))s=(getComputedStyle(t).getPropertyValue(c)+"").trim(),o+="",Et.lastIndex=0,Et.test(s)||(d=_a(s),(p=_a(o))?d!==p&&(s=ce(t,c,s,p)+p):d&&(o+=d)),this.add(k,"setProperty",s,o,n,a,0,0,c),x.push(c),b.push(c,0,k[c]);else if("undefined"!==l){if(O&&c in O?(s="function"==typeof O[c]?O[c].call(i,n,t,a):O[c],r(s)&&~s.indexOf("random(")&&(s=rb(s)),_a(s+"")||"auto"===s||(s+=Y.units[c]||_a(wr(t,c))||""),"="===(s+"").charAt(1)&&(s=wr(t,c))):s=wr(t,c),h=parseFloat(s),(_="string"===l&&"="===o.charAt(1)&&o.substr(0,2))&&(o=o.substr(2)),u=parseFloat(o),c in _r&&("autoAlpha"===c&&(1===h&&"hidden"===wr(t,"visibility")&&u&&(h=0),b.push("visibility",0,k.visibility),_d(this,k,"visibility",h?"inherit":"hidden",u?"inherit":"hidden",!u)),"scale"!==c&&"transform"!==c&&~(c=_r[c]).indexOf(",")&&(c=c.split(",")[0])),m=c in ur){if(this.styles.save(c),w=o,"string"===l&&"var(--"===o.substring(0,6)){if("calc("===(o=Sd(t,o.substring(4,o.indexOf(")")))).substring(0,5)){var M=t.style.perspective;t.style.perspective=o,o=Sd(t,"perspective"),M?t.style.perspective=M:$d(t,"perspective")}u=parseFloat(o)}if(g||((v=t._gsap).renderTransform&&!e.parseTransform||Cr(t,e.parseTransform),y=!1!==e.smoothOrigin&&v.smooth,(g=this._pt=new we(this._pt,k,mr,0,1,v.renderTransform,v,0,-1)).dep=1),"scale"===c)this._pt=new we(this._pt,v,"scaleY",v.scaleY,(_?ma(v.scaleY,_+u):u)-v.scaleY||0,xd),this._pt.u=0,x.push("scaleY",c),c+="X";else{if("transformOrigin"===c){b.push(gr,0,k[gr]),o=ge(o),v.svg?oe(t,o,0,y,0,this):((p=parseFloat(o.split(" ")[2])||0)!==v.zOrigin&&_d(this,v,"zOrigin",v.zOrigin,p),_d(this,k,c,Pr(s),Pr(o)));continue}if("svgOrigin"===c){oe(t,o,1,y,0,this);continue}if(c in Mr){ye(this,v,c,h,_?ma(h,_+o):o);continue}if("smoothOrigin"===c){_d(this,v,"smooth",v.smooth,o);continue}if("force3D"===c){v[c]=o;continue}if("transform"===c){Ae(this,o,t);continue}}}else c in k||(c=yr(c)||c);if(m||(u||0===u)&&(h||0===h)&&!pr.test(o)&&c in k)u=u||0,(d=(s+"").substr((h+"").length))!==(p=_a(o)||(c in Y.units?Y.units[c]:d))&&(h=ce(t,c,s,p)),this._pt=new we(this._pt,m?v:k,c,h,(_?ma(h,_+u):u)-h,m||"px"!==p&&"zIndex"!==c||!1===e.autoRound?xd:Bd),this._pt.u=p||0,m&&w!==o?(this._pt.b=s,this._pt.e=w,this._pt.r=Ad):d!==p&&"%"!==p&&(this._pt.b=s,this._pt.r=zd);else if(c in k)ee.call(this,t,c,s,_?_+o:o);else if(c in t)this.add(t,c,s||t[c],_?_+o:o,n,a);else if("parseTransform"!==c){S(c,o);continue}m||(c in k?b.push(c,0,k[c]):"function"==typeof t[c]?b.push(c,2,t[c]()):b.push(c,1,s||t[c])),x.push(c)}T&&be(this)},render:function render(t,e){if(e.tween._time||!je())for(var r=e._pt;r;)r.r(t,r.d),r=r._next;else e.styles.revert()},get:wr,aliases:_r,getSetter:function getSetter(t,e,r){var i=_r[e
+      { text: "每当到书店，都仿若朝圣一般，书的光就此融化掉广州的喧哗", title: "书", date: "2026-03-25", slug: "article-90b10b82cf51" },
+      { text: "一点波纹水里骤环圆展，鱼声惊动，洗净了绸缎似的鄱阳湖水", title: "笔触校园·鄱阳湖", date: "2026-05-15", slug: "article-e37a14020877" },
+      { text: "湿地公园静静潜在行政楼前，一个学期飞一样过去了", title: "笔触校园·湿地公园", date: "2026-02-23", slug: "article-e99707a792c7" },
+      { text: "善境花园，光听名字便觉仿若一处云里雾里、有如道观一样境界的地方", title: "笔触校园·善境花园", date: "2026-04-12", slug: "article-aae1c6ba555d" },
+      { text: "从华农地铁口出来，一路上路过洪泽湖畔，灰白色建筑在视野当中一站便是百年", title: "笔触校园·农林讲习所门楼", date: "2026-02-08", slug: "article-f04412e73ae7" },
+      { text: "竹铭草海横卧在教学楼之间，其名称由来于丁颖教授的号", title: "笔触校园·竹铭草海", date: "2026-03-07", slug: "article-7dacdffeb4d8" },
+      { text: "几日前看了史铁生《记忆与印象2》，唤醒了我久远以前的记忆，像一枚石子投进深潭", title: "记忆与印象", date: "2026-06-05", slug: "article-fe493f3c1f3f" },
+      { text: "作为一个极具感性的人，若从正面说，或许会被人称作有艺术家的潜质", title: "情感具象化（1）", date: "2025-09-25", slug: "article-ea3b4a8ad04d" },
+      { text: "千穗草海，第一次来时一心念着任务与得分，没有察觉脚下土地的分量", title: "笔触校园·千穗草海", date: "2026-01-18", slug: "article-21e59dfe3844" },
+      { text: "酸奶文化馆，光听名字便以为是纪念馆建筑，未料竟是一间飘着奶香的咖啡屋", title: "笔触校园·酸奶文化馆", date: "2026-02-14", slug: "article-1b816857340a" },
+      { text: "昆虫在博物馆里静静诉说着被忽略的世界，我却从未真正看见它们", title: "笔触校园·昆虫博物馆", date: "2026-04-03", slug: "article-18171bcb704e" },
+      { text: "农业也是有其历史的，从刀耕火种到AI赋能的当代，梳理自身农业历史必不可少", title: "笔触校园·农史特藏室", date: "2026-03-28", slug: "article-f3963bf15f3d" },];return i&&i.indexOf(",")<0&&(e=i),e in ur&&e!==gr&&(t._gsap.x||wr(t,"x"))?r&&Ye===r?"scale"===e?Hd:Gd:(Ye=r||{})&&("scale"===e?Id:Jd):t.style&&!u(t.style[e])?Ed:~e.indexOf("-")?Fd:ue(t,e)},core:{_removeProperty:$d,_getMatrix:ne}};Fe.utils.checkPrefix=yr,Fe.core.getStyleSaver=Pd,Lr=ja((Fr="x,y,z,scale,scaleX,scaleY,xPercent,yPercent")+","+(Ir="rotation,rotationX,rotationY,skewX,skewY")+",transform,transformOrigin,svgOrigin,force3D,smoothOrigin,transformPerspective",function(t){ur[t]=1}),ja(Ir,function(t){Y.units[t]="deg",Mr[t]=1}),_r[Lr[13]]=Fr+","+Ir,ja("0:translateX,1:translateY,2:translateZ,8:rotate,8:rotationZ,8:rotateZ,9:rotateX,10:rotateY",function(t){var e=t.split(":");_r[e[1]]=Lr[e[0]]}),ja("x,y,z,top,right,bottom,left,width,height,fontSize,padding,margin,perspective",function(t){Y.units[t]="px"}),Fe.registerPlugin(Br);var Nr=Fe.registerPlugin(Br)||Fe,Ur=Nr.core.Tween;e.Back=rr,e.Bounce=nr,e.CSSPlugin=Br,e.Circ=or,e.Cubic=Qe,e.Elastic=er,e.Expo=sr,e.Linear=$e,e.Power0=Xe,e.Power1=qe,e.Power2=Ge,e.Power3=Ze,e.Power4=We,e.Quad=He,e.Quart=Je,e.Quint=Ke,e.Sine=ar,e.SteppedEase=ir,e.Strong=tr,e.TimelineLite=Gt,e.TimelineMax=Gt,e.TweenLite=te,e.TweenMax=Ur,e.default=Nr,e.gsap=Nr;if (typeof(window)==="undefined"||window!==e){Object.defineProperty(e,"__esModule",{value:!0})} else {delete e.default}});
+
+
+</script>
+<script>/*铸言动效增强: Lenis + GSAP (尊重 prefers-reduced-motion) */
+
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- Lenis 全局平滑滚动（克制、不抢戏） ----
+  if (!reduce && window.Lenis) {
+    try {
+      var lenis = new Lenis({
+        duration: 1.15,
+        easing: function (t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); },
+        smoothWheel: true,
+        wheelMultiplier: 1
+      });
+      function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+      requestAnimationFrame(raf);
+      window.__lenis = lenis;
+      document.documentElement.classList.add('has-lenis');
+    } catch (e) { console.warn('Lenis init failed', e); }
+  }
+
+  // ---- GSAP 增强（仅在高价值且不冲突的位置） ----
+  if (!reduce && window.gsap) {
+    // (a) 首屏 header 轻浮入（第一眼高级感；不动 .post-card 以免与 .reveal 冲突）
+    window.addEventListener('load', function () {
+      try {
+        var header = document.querySelector('header');
+        if (header) gsap.from(header, { opacity: 0, y: -18, duration: 0.9, ease: 'power3.out' });
+      } catch (e) {}
+    });
+
+    // (b) 文章页段落逐个浮入（阅读的呼吸感）
+    var proseObserver = new MutationObserver(function () {
+      var detail = document.querySelector('.post-detail .markdown');
+      if (detail && !detail.dataset.anim) {
+        detail.dataset.anim = '1';
+        var blocks = detail.querySelectorAll('p, h2, h3, h4, blockquote, li, .post-meta');
+        blocks.forEach(function (b, i) {
+          gsap.set(b, { opacity: 0, y: 18 });
+          var io = new IntersectionObserver(function (es) {
+            es.forEach(function (e) {
+              if (e.isIntersecting) {
+                gsap.to(b, { opacity: 1, y: 0, duration: 0.7, delay: Math.min(i * 0.025, 0.25), ease: 'power2.out' });
+                io.unobserve(b);
+              }
+            });
+          }, { threshold: 0.08 });
+          io.observe(b);
+        });
+      }
+    });
+    proseObserver.observe(document.body, { childList: true, subtree: true });
+  }
+})();
+
+</script>
 </body>
 </html>
